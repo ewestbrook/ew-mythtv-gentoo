@@ -10,8 +10,8 @@ inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
 # $ HT=$(git log -n 1 --pretty="format:%H %ct") ; echo $HT
 ########## edit for new versions ###########
 GITBRANCH="fixes/0.24"
-GITSTAMP="1289264034" # set to 9999999999 for latest version, integer timestamp for pinned
-GITHASH="011ffd5134d5e6e7baace071a4ebc70d6bdd3fb0" # for a numbered version
+GITSTAMP="1291777173" # set to 9999999999 for latest version, integer timestamp for pinned
+GITHASH="ee57332927393d071d7b3f1788476f07c77f7e82" # for a numbered version
 # GITHASH="$GITBRANCH" # for branch's latest version instead
 ############################################
 
