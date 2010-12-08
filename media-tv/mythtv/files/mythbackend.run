@@ -1,0 +1,5 @@
+#!/bin/bash
+source /etc/conf.d/mythbackend
+[ -z "${MYTH_VERBOSE}" ] && MYTH_VERBOSE="important,general"
+[ -z "${MYTH_LOGFILE}" ] && MYTH_LOGFILE="/var/log/mythtv/mythbackend.log"
+exec setuidgid mythtv /usr/bin/mythbackend --verbose ${MYTH_VERBOSE} ${MYTH_EXTRAOPTS} --logfile /var/log/mythtv/mythbackend.log
