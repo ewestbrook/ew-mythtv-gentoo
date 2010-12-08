@@ -38,7 +38,7 @@ EGIT_COMMIT="$GITHASH"
 EGIT_BRANCH="$GITBRANCH"
 inherit git
 
-if /bin/true ; then
+if /bin/false ; then
   einfo P: $P
   einfo PN: $PN
   einfo PV: $PV
