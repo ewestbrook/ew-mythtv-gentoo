@@ -1,0 +1,26 @@
+diff -ru old/branches/release-0-24-fixes/mythtv/libs/libmythtv/videooutbase.cpp new/branches/release-0-24-fixes/mythtv/libs/libmythtv/videooutbase.cpp
+--- old/branches/release-0-24-fixes/mythtv/libs/libmythtv/videooutbase.cpp	2010-10-10 17:33:18.000000000 -0600
++++ new/branches/release-0-24-fixes/mythtv/libs/libmythtv/videooutbase.cpp	2010-11-03 00:52:19.000000000 -0600
+@@ -1695,11 +1695,21 @@
+     if (disp_dim.isEmpty())
+     {
+         source = "Guessed!";
+-        VERBOSE(VB_GENERAL, LOC + "Physical size of display unknown."
++        VERBOSE(VB_PLAYBACK, LOC + "Physical size of display unknown."
+                 "\n\t\t\tAssuming 17\" monitor with square pixels.");
+         disp_dim = QSize((int) ((300 * pixel_aspect) + 0.5), 300);
+     }
+ 
++    int vobasp = gCoreContext->GetNumSettingOnHost("IgnorePhysicalDimensions"
++                                                   , gCoreContext->GetHostName()
++                                                   , 0);
++    VERBOSE(VB_PLAYBACK, LOC + QString("IgnorePhysicalDimensions = %1").arg(vobasp));
++    if (vobasp) {
++        source = "SquarePixels!";
++        VERBOSE(VB_PLAYBACK, LOC + "Ignoring display physical dimensions; square pixels assumed.");
++        disp_dim.setWidth((int) ((disp_dim.height() * pixel_aspect) + 0.5));
++    }
++
+     disp_aspect = (float) disp_dim.width() / (float) disp_dim.height();
+     VERBOSE(VB_PLAYBACK, LOC +
+             QString("%1 display dimensions: %2x%3 mm  Aspect: %4")
