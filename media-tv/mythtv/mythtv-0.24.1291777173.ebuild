@@ -59,6 +59,7 @@ if /bin/true ; then
   einfo EGIT_COMMIT: $EGIT_COMMIT
   einfo EGIT_BRANCH: $EGIT_BRANCH
   einfo ORIGINAL_S: $ORIGINAL_S
+  einfo D: $D
 fi
 
 IUSE_VIDEO_CARDS="\
@@ -71,7 +72,7 @@ IUSE="
   altivec
   +css
   dbus
-  +dcraw
+  dcraw
   debug
   directv
   dvb
@@ -89,6 +90,7 @@ IUSE="
   mythmusic
   mythnews
   mythmusic
+  myththemes
   mythvideo
   mythweather
   -mythzoneminder
@@ -131,6 +133,7 @@ RDEPEND="
 	media-fonts/corefonts
 	media-fonts/dejavu
 	media-video/transcode
+	myththemes? ( x11-libs/qt-core:4 )
 	perl? ( dev-perl/DBD-mysql )
 	pulseaudio? ( >=media-sound/pulseaudio-0.9.7 )
 	python? ( dev-python/mysql-python dev-python/lxml )
@@ -192,55 +195,38 @@ src_configure() {
 
 	local myconf="--prefix=/usr
 		--mandir=/usr/share/man
-		--libdir-name=$(get_libdir)"
-
-	use altivec || myconf="${myconf} --disable-altivec"
-	use alsa || myconf="${myconf} --disable-audio-alsa"
-	use fftw && myconf="${myconf} --enable-libfftw3"
-	use jack || myconf="${myconf} --disable-audio-jack"
-	use vdpau && myconf="${myconf} --enable-vdpau"
-
-	myconf="${myconf}
-		$(use_enable dvb)
-		$(use_enable ieee1394 firewire)
-		$(use_enable lirc)
+		--libdir-name=$(get_libdir)
 		--disable-directfb
 		--dvb-path=/usr/include
 		--enable-opengl-vsync
+		--enable-x11
 		--enable-xrandr
 		--enable-xv
-		--enable-x11"
+		$(use_enable alsa audio-alsa)
+		$(use_enable altivec)
+		$(use_enable dvb)
+		$(use_enable fftw libfftw3)
+		$(use_enable ieee1394 firewire)
+		$(use_enable jack audio-jack)
+		$(use_enable lirc)
+		$(use_enable vdpau)"
 
-	if use mmx || use amd64; then
-		myconf="${myconf} --enable-mmx"
-	else
-		myconf="${myconf} --disable-mmx"
-	fi
+	use mmx || use adm64 && mm="en" || mm="dis"
+	myconf="${myconf} --${mm}able-mmx"
 
-	if use perl && use python; then
-		myconf="${myconf} --with-bindings=perl,python"
-	elif use perl; then
-		myconf="${myconf} --with-bindings=perl"
-	elif use python; then
-		myconf="${myconf} --with-bindings=python"
-	else
-		myconf="${myconf} --without-bindings=perl,python"
-	fi
+	use perl && wb="perl" || wb=""
+	use python && wb="${wb},python"
+	[ "" == "${wb}" ] && wo=out && wb="perl,python" || wo=""
+	myconf="${myconf} --with${wo}-bindings=${wb}"
 
-	if use debug; then
-		myconf="${myconf} --compile-type=debug"
-	else
-		myconf="${myconf} --compile-type=release"
-	fi
+	use debug && ct="debug" || ct="release"
+	myconf="${myconf} --compile-type=${ct}"
 
 	hasq distcc ${FEATURES} || myconf="${myconf} --disable-distcc"
 	hasq ccache ${FEATURES} || myconf="${myconf} --disable-ccache"
 
 	einfo "Running ./configure ${myconf}"
 	sh ./configure ${myconf} || die "configure died"
-
-	# for some reason the .sh files don't come executable when fetched in zip format
-	chmod -v +x $(find "${S}" -name '*.sh')
 
 	# mythplugins
 	#############
@@ -249,7 +235,7 @@ src_configure() {
 	cd "${S}"
 	#############
 
-	local myconf="--prefix=/usr
+	local myconf1="--prefix=/usr
 		--mandir=/usr/share/man
 		--libdir-name=$(get_libdir)
 		$(use_enable dcraw)
@@ -266,8 +252,8 @@ src_configure() {
 		$(use_enable mythnetvision)
 		$(use_enable opengl)"
 
-	einfo "Running ./configure ${myconf}"
-	sh ./configure ${myconf} || die "configure died"
+	einfo "Running ./configure ${myconf1}"
+	sh ./configure ${myconf1} || die "configure died"
 }
 
 src_compile() {
@@ -275,7 +261,7 @@ src_compile() {
 	# mythtv
 	########
 	S="${ORIGINAL_S}/mythtv"
-	einfo mythtv section of src_install in ${S}
+	einfo mythtv section of src_compile in ${S}
 	cd "${S}"
 	########
 
@@ -283,8 +269,8 @@ src_compile() {
 
 	# mythplugins
 	########
-	S="${ORIGINAL_S}/mythtv"
-	einfo mythplugins section of src_install in ${S}
+	S="${ORIGINAL_S}/mythplugins"
+	einfo mythplugins section of src_compile in ${S}
 	cd "${S}"
 	########
 
@@ -296,20 +282,20 @@ src_install() {
 	# mythtv
 	########
 	S="${ORIGINAL_S}/mythtv"
-	einfo mythtv section of src_install in ${S}
+	einfo mythtv install section of src_install in ${S}
 	cd "${S}"
 	########
 
 	einfo installing to INSTALL_ROOT: "${D}"
 	make INSTALL_ROOT="${D}" install || die "install failed"
 	dodoc AUTHORS FAQ UPGRADING README
-	newinitd "${FILESDIR}"/mythbackend-"${VC[0]}"."${VC[2]}".rc mythbackend
-	newconfd "${FILESDIR}"/mythbackend-"${VC[0]}"."${VC[2]}".conf mythbackend
+	newinitd "${FILESDIR}"/mythbackend.rc mythbackend
+	newconfd "${FILESDIR}"/mythbackend.conf mythbackend
 	dodir /var/log/mythtv
 	fowners mythtv:mythtv /var/log/mythtv
 	dodir /var/service/mythbackend
 	exeinto /var/service/mythbackend
-	newexe "${FILESDIR}"/mythbackend-"${VC[0]}"."${VC[2]}".run run
+	newexe "${FILESDIR}"/mythbackend.run run
 
 	# mythplugins
 	#############
