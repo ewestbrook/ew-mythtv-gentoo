@@ -9,10 +9,10 @@ inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
 # $ git checkout branch
 # $ HT=$(git log -n 1 --pretty="format:%H %ct") ; echo $HT
 ########## edit for new versions ###########
-GITBRANCH="fixes/0.24"
+MYTHBRANCH="fixes" # select "fixes" for 0.24-fixes et al, or "master" for trunk
 GITSTAMP="1291777173" # set to 9999999999 for latest version, integer timestamp for pinned
 GITHASH="ee57332927393d071d7b3f1788476f07c77f7e82" # for a numbered version
-# GITHASH="$GITBRANCH" # for branch's latest version instead
+# GITHASH="" # leave empty for branch's latest version instead
 ############################################
 
 HOMEPAGE="http://www.mythtv.org"
@@ -34,11 +34,13 @@ ebuild for an updated version, be sure to edit the ebuild and insert \
 the correct timestamp and commit hash."
 
 EGIT_REPO_URI="git://github.com/MythTV/mythtv"
-EGIT_COMMIT="$GITHASH"
-EGIT_BRANCH="$GITBRANCH"
-inherit git
+EGIT_COMMIT=$([ "" == "${GITHASH}" ] && echo "${GITBRANCH}" || echo "${GITHASH}")
+EGIT_BRANCH=$([ "fixes" == "${MYTHBRANCH}" ] && echo "fixes/${MYTHMAJOR}.${MYTHMINOR}" || echo "master")
 
-if /bin/false ; then
+inherit git
+ORIGINAL_S="${S}"
+
+if /bin/true ; then
   einfo P: $P
   einfo PN: $PN
   einfo PV: $PV
@@ -53,7 +55,11 @@ if /bin/false ; then
   einfo GITHASH: $GITHASH
   einfo GITBRIEF: $GITBRIEF
   einfo SRC_URI: $SRC_URI
-  einfo S: $S
+  einfo EGIT_REPO_URI: $EGIT_REPO_URI
+  einfo EGIT_COMMIT: $EGIT_COMMIT
+  einfo EGIT_BRANCH: $EGIT_BRANCH
+  einfo ORIGINAL_S: $ORIGINAL_S
+  einfo D: $D
 fi
 
 IUSE_VIDEO_CARDS="\
@@ -80,7 +86,6 @@ IUSE="
   python
   tiff
   vdpau
-  xvmc
   ${IUSE_VIDEO_CARDS}
 "
 
@@ -135,7 +140,7 @@ DEPEND="${RDEPEND}
 
 src_unpack() {
 	git_src_unpack
-	S="${S}/${PN}"
+	S="${ORIGINAL_S}/mythtv"
 	cd "${S}"
 	epatch "${FILESDIR}/${PN}-0.21-ldconfig-sanxbox-fix.patch"
 	epatch "${FILESDIR}/${PN}-ew-square-pixels.patch"
@@ -149,56 +154,38 @@ pkg_setup() {
 src_configure() {
 	local myconf="--prefix=/usr
 		--mandir=/usr/share/man
-		--libdir-name=$(get_libdir)"
-
-	use altivec || myconf="${myconf} --disable-altivec"
-	use alsa || myconf="${myconf} --disable-audio-alsa"
-	use fftw && myconf="${myconf} --enable-libfftw3"
-	use jack || myconf="${myconf} --disable-audio-jack"
-	use vdpau && myconf="${myconf} --enable-vdpau"
-	use xvmc && myconf="${myconf} --enable-xvmc --enable-xvmcw"
-
-	myconf="${myconf}
-		$(use_enable dvb)
-		$(use_enable ieee1394 firewire)
-		$(use_enable lirc)
+		--libdir-name=$(get_libdir)
 		--disable-directfb
 		--dvb-path=/usr/include
 		--enable-opengl-vsync
+		--enable-x11
 		--enable-xrandr
 		--enable-xv
-		--enable-x11"
+		$(use_enable alsa audio-alsa)
+		$(use_enable altivec)
+		$(use_enable dvb)
+		$(use_enable fftw libfftw3)
+		$(use_enable ieee1394 firewire)
+		$(use_enable jack audio-jack)
+		$(use_enable lirc)
+		$(use_enable vdpau)"
 
-	if use mmx || use amd64; then
-		myconf="${myconf} --enable-mmx"
-	else
-		myconf="${myconf} --disable-mmx"
-	fi
+	use mmx || use adm64 && mm="en" || mm="dis"
+	myconf="${myconf} --${mm}able-mmx"
 
-	if use perl && use python; then
-		myconf="${myconf} --with-bindings=perl,python"
-	elif use perl; then
-		myconf="${myconf} --with-bindings=perl"
-	elif use python; then
-		myconf="${myconf} --with-bindings=python"
-	else
-		myconf="${myconf} --without-bindings=perl,python"
-	fi
+	use perl && wb="perl" || wb=""
+	use python && wb="${wb},python"
+	[ "" == "${wb}" ] && wo=out && wb="perl,python" || wo=""
+	myconf="${myconf} --with${wo}-bindings=${wb}"
 
-	if use debug; then
-		myconf="${myconf} --compile-type=debug"
-	else
-		myconf="${myconf} --compile-type=release"
-	fi
+	use debug && ct="debug" || ct="release"
+	myconf="${myconf} --compile-type=${ct}"
 
 	hasq distcc ${FEATURES} || myconf="${myconf} --disable-distcc"
 	hasq ccache ${FEATURES} || myconf="${myconf} --disable-ccache"
 
 	einfo "Running ./configure ${myconf}"
 	sh ./configure ${myconf} || die "configure died"
-
-	# for some reason the .sh files don't come executable when fetched in zip format
-	chmod -v +x $(find "${S}" -name '*.sh')
 }
 
 src_compile() {
@@ -209,13 +196,13 @@ src_install() {
 	einfo installing to INSTALL_ROOT: "${D}"
 	make INSTALL_ROOT="${D}" install || die "install failed"
 	dodoc AUTHORS FAQ UPGRADING README
-	newinitd "${FILESDIR}"/mythbackend-"${VC[0]}"."${VC[2]}".rc mythbackend
-	newconfd "${FILESDIR}"/mythbackend-"${VC[0]}"."${VC[2]}".conf mythbackend
+	newinitd "${FILESDIR}"/mythbackend.rc mythbackend
+	newconfd "${FILESDIR}"/mythbackend.conf mythbackend
 	dodir /var/log/mythtv
 	fowners mythtv:mythtv /var/log/mythtv
 	dodir /var/service/mythbackend
 	exeinto /var/service/mythbackend
-	newexe "${FILESDIR}"/mythbackend-"${VC[0]}"."${VC[2]}".run run
+	newexe "${FILESDIR}"/mythbackend.run run
 }
 
 pkg_postinst() {
