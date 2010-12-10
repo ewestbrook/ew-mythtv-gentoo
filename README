@@ -1,87 +1,27 @@
-Welcome to the EW mythtv-gentoo ebuilds!
-
+EW Mythtv Gentoo Overlay Ebuilds
+Copyright (c) 2010 Eric E. Westbrook
 Licensed under GPL-2
 https://github.com/ewestbrook/ew-mythtv-gentoo
-E. Westbrook <github@westbrook.com>
+E. Westbrook <ewmgoe@westbrook.com>
 
---------------------------
+Full documentation:
 
-This project is a set of Gentoo ebuilds for MythTV.  Why?  Cleaner,
-better, easier!
+https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/
 
-* Easily stay up to date with CURRENT stable or unstable MythTV
-  releases!
+First time setup:
+https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/First-Time-Setup
 
-    You've probably observed that portage's MythTV ebuilds aren't even
-    anywhere CLOSE to current.
+1.  Clone this repo into a local directory
+2.  Add that directory to PORTDIR_OVERLAY in /etc/make.conf
+3.  (Optional) Mask and Unmask to taste
+4.  (Optional) Edit USE flags to taste
+5.  Emerge
 
-* Consistent version numbers that make sense!
+Updating:
+https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/Updating
 
-    * You can always rely on the order from old to new and stable to
-      unstable.
+1.  Update your local repo
+2.  Emerge
 
-    * You can always identify your version with the rest of the MythTV
-      world.
-
-    * The stable -fixes branches are arch-ready, and the unstable
-      "bleeding-edge" versions are easily keywordable for ~arch.
-
-    * For example:
-
-        * 0.24.1289264034 for a specific version of the fixes/0.24
-          branch;
-
-        * 0.24.9999999999 for the latest bleeding-edge fixes/0.24
-          branch;
-
-        * 999.999.1291787075 for a specific version of trunk/master;
-
-        * 999.999.9999999999 for latest bleeding-edge trunk/master.
-
-* One ebuild for all plugins!
-
-    Gentoo's "plugins" ebuilds for MythTV are simply out of control!
-    We maintain one ebuild, and you select your plugins with USE
-    flags.  Much cleaner!
-
-* Easy to use and update!
-
-    Just clone/fetch/pull and emerge.  No per-version /etc/make.conf
-    hacks or other nonsense required.
-
---------------------------
-
-One-time setup:
-
-* Clone the mythtv-gentoo repo somewhere convenient, say
-  /usr/local/mythtv-gentoo:
-
-    $ git clone git://github.com/ewestbrook/mythtv-gentoo.git /usr/local/mythtv-gentoo
-
-* Tell your /etc/make.conf about it, as an overlay directory:
-
-    $ echo 'PORTDIR_OVERLAY="${PORTDIR_OVERLAY} /usr/local/mythtv-gentoo"' >> /etc/make.conf
-
-* (Optional, recommended) Mask all of portage's ridiculous mythtv
-  plugins ebuilds:
-
-    $ for i in mytharchive mythbrowser mythflix mythgallery mythmovies mythmusic mythnews mythvideo mythweather mythzoneminder ; do echo "media-plugins/$i" >> /etc/portage/package.mask ; done
-
-* (Optional, recommended) Unmask our own ebuilds, in case portage has
-  masks that shouldn't apply to us:
-
-    $ for i in media-tv/mythtv media-plugins/mythplugins www-apps/mythweb x11-themes/mythtv-themes ; do echo $i >> /etc/portage /package.unmask ; done
-
---------------------------
-
-Emerge anytime!
-
-* Update (if necessary):
-
-    $ pushd /usr/local/mythtv-gentoo && git fetch && git pull && popd
-
-* Emerge:
-
-    $ emerge -av mythtv mythplugins mythweb mythtv-themes
-
-* Enjoy!
+Full documentation at:
+https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/

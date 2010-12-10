@@ -1,0 +1,91 @@
+Index: mythplugins/mythweb/INSTALL
+===================================================================
+--- mythplugins/mythweb/INSTALL	(revision 27285)
++++ mythplugins/mythweb/INSTALL	(working copy)
+@@ -193,8 +193,6 @@
+     mythweb.conf.apache         (See section 5.0)
+     mythweb.conf.lighttpd       (See section 6.0)
+ 
+-Please do not use Lighttpd unless you know what you are doing.
+-
+ ==========
+ 5.0 Apache
+ ==========
+@@ -360,8 +358,76 @@
+ 6.0 Lighttpd
+ ============
+ 
+-Sorry, no documentation here yet...
++Configuring lighttpd for mythweb is not as difficult as it once might
++have been.  All you need to do is add this to your
++/etc/lighttpd/lighttpd.conf, or a file included by it (substituting of
++course for your own local particulars).
+ 
++If you're running mythweb as a virtual host, include the following
++inside a $HTTP["host"] directive.
++
++  # You'll want to specify the document root, naturally
++
++  server.document-root = "/var/www/localhost/htdocs/mythweb"
++
++  # The following two sections are the "meat" of configuring mythweb
++  # under lighttpd.  You will need this at the least.
++
++  setenv.add-environment = (
++    "db_server"   => "servername",
++    "db_name"     => "mythconverg",
++    "db_login"    => "mythtv",
++    "db_password" => "password"
++  )
++
++  url.rewrite-once = (
++    "^/(css|data|images|js|themes|skins|[a-z_]+\.(php|pl)).*" => "$0",
++    "^/(pl(/.*)?)$" => "/mythweb.pl/$1",
++    "^/(.+)$"       => "/mythweb.php/$1",
++    "^/(.*)$"       => "/mythweb.php"
++  )
++
++  # Protip: If you want HTTP Digest Authentication, uncomment and
++  # configure this section.  Set up the mythweb.htdigest file for your
++  # users according to the normal lighttpd documentation.
++
++  # auth.backend = "htdigest"
++  # auth.backend.htdigest.userfile = "/etc/lighttpd/mythweb.htdigest"
++  # auth.require = (
++  #   "/" => (
++  #     "method"  => "digest",
++  #     "realm"   => "MythTV",
++  #     "require" => "valid-user"
++  #   )
++  # )
++
++  # Protip: Uncomment and configure this section if you aren't already
++  # using fastcgi for PHP applications on your lighttpd server.  If
++  # you're running mythweb as a virtual host, uncommenting this
++  # section will allow it to run as its own unique and isolated
++  # fastcgi instance.
++
++  # fastcgi.server = (
++  #   ".php" => ((
++  #     "bin-path" => "/usr/bin/php-cgi",
++  #     "socket"   => "/var/run/lighttpd/mythtv-php-fcgi.socket",
++  #     "broken-scriptfilename" => "enable",
++  #     "bin-environment" => (
++  #       "db_server"   => "localhost",
++  #       "db_name"     => "mythconverg",
++  #       "db_login"    => "mythtv",
++  #       "db_password" => "mythtv"
++  #     )
++  #   ))
++  # )
++
++  # Protip: You might already have perl CGIs handled in your lighttpd
++  # config.  If you don't, you'll want this section.
++
++  # cgi.assign = (
++  #   ".pl"  => "/usr/bin/perl"
++  # )
++
+ =======
+ 7.0 PHP
+ =======

@@ -1,6 +1,6 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/media-tv/mythtv/mythtv-0.23_alpha22857.ebuild,v 1.4 2010/03/23 03:43:52 vapier Exp $
+# $Header: $
 
 EAPI=2
 inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
@@ -21,6 +21,78 @@ RESTRICT="nomirror strip"
 DESCRIPTION="Homebrew PVR project"
 SLOT="0"
 KEYWORDS="amd64 ppc x86"
+
+IUSE_VIDEO_CARDS="
+  video_cards_nvidia
+  video_cards_via
+"
+
+IUSE="
+  alsa
+  altivec
+ +css
+  dbus
+  debug
+  directv
+  dvb
+  fftw
+  ieee1394
+  jack
+  lcd
+  lirc
+  mmx
+  perl
+  pulseaudio
+  python
+  tiff
+  vdpau
+  ${IUSE_VIDEO_CARDS}
+"
+
+RDEPEND="
+	media-fonts/corefonts
+	media-fonts/dejavu
+	media-libs/freetype:2
+	media-sound/lame
+	x11-libs/libX11
+	x11-libs/libXext
+	x11-libs/libXinerama
+	x11-libs/libXv
+	x11-libs/libXrandr
+	x11-libs/libXxf86vm
+	x11-libs/qt-core:4[qt3support]
+	x11-libs/qt-gui:4[dbus?,qt3support,tiff?]
+	x11-libs/qt-sql:4[qt3support,mysql]
+	x11-libs/qt-opengl:4[qt3support]
+	x11-libs/qt-webkit:4[dbus?]
+	virtual/mysql
+	virtual/opengl
+	virtual/glu
+	|| ( net-misc/wget media-tv/xmltv )
+	alsa? ( media-libs/alsa-lib )
+	css? ( media-libs/libdvdcss )
+	dbus? ( x11-libs/qt-dbus:4 )
+	directv? ( virtual/perl-Time-HiRes )
+	dvb? ( media-libs/libdvb media-tv/linuxtv-dvb-headers )
+	fftw? ( sci-libs/fftw:3.0 )
+	ieee1394? (	sys-libs/libraw1394 sys-libs/libavc1394 media-libs/libiec61883 )
+	jack? ( media-sound/jack-audio-connection-kit )
+	lcd? ( app-misc/lcdproc )
+	lirc? ( app-misc/lirc )
+	perl? ( dev-perl/DBD-mysql )
+	pulseaudio? ( media-sound/pulseaudio )
+	python? ( dev-python/mysql-python dev-python/lxml )
+	vdpau? ( x11-libs/libvdpau )
+"
+
+DEPEND="
+	${RDEPEND}
+	app-arch/unzip
+	x11-proto/xineramaproto
+	x11-proto/xf86vidmodeproto
+	x11-apps/xinit
+"
+
 MY_PN="MythTV"
 VC=( $(get_all_version_components ${PV}) )
 MYTHMAJOR="${VC[0]}"
@@ -28,19 +100,16 @@ MYTHMINOR="${VC[2]}"
 EBSTAMP="${VC[4]}"
 GITBRIEF=${GITHASH:0:7}
 
-[ "$EBSTAMP" == "$GITSTAMP" ] || die "Git timestamp integer doesn't \
-match this ebuild's filenamed version.  If you are creating a new \
-ebuild for an updated version, be sure to edit the ebuild and insert \
-the correct timestamp and commit hash."
+[ "$EBSTAMP" == "$GITSTAMP" ] || die "In-ebuild timestamp integer doesn't filename's.  Edit ebuild."
 
-EGIT_REPO_URI="git://github.com/MythTV/mythtv"
+EGIT_REPO_URI="git://github.com/${MY_PN}/${PN}"
 EGIT_COMMIT=$([ "" == "${GITHASH}" ] && echo "${GITBRANCH}" || echo "${GITHASH}")
 EGIT_BRANCH=$([ "fixes" == "${MYTHBRANCH}" ] && echo "fixes/${MYTHMAJOR}.${MYTHMINOR}" || echo "master")
 
 inherit git
 ORIGINAL_S="${S}"
 
-if /bin/true ; then
+if /bin/false ; then
   einfo P: $P
   einfo PN: $PN
   einfo PV: $PV
@@ -62,82 +131,6 @@ if /bin/true ; then
   einfo D: $D
 fi
 
-IUSE_VIDEO_CARDS="\
-  video_cards_nvidia \
-  video_cards_via \
-"
-
-IUSE="
-  alsa
-  altivec
-  +css
-  dbus
-  debug
-  directv
-  dvb
-  fftw
-  ieee1394
-  jack
-  lcd
-  lirc
-  mmx
-  perl
-  pulseaudio
-  python
-  tiff
-  vdpau
-  ${IUSE_VIDEO_CARDS}
-"
-
-# fonts from bug #296222
-RDEPEND="media-fonts/corefonts
-	media-fonts/dejavu
-	>=media-libs/freetype-2.0
-	>=media-sound/lame-3.93.1
-	x11-libs/libX11
-	x11-libs/libXext
-	x11-libs/libXinerama
-	x11-libs/libXv
-	x11-libs/libXrandr
-	x11-libs/libXxf86vm
-	>=x11-libs/qt-core-4.4:4[qt3support]
-	>=x11-libs/qt-gui-4.4:4[dbus?,qt3support,tiff?]
-	>=x11-libs/qt-sql-4.4:4[qt3support,mysql]
-	>=x11-libs/qt-opengl-4.4:4[qt3support]
-	>=x11-libs/qt-webkit-4.4:4[dbus?]
-	virtual/mysql
-	virtual/opengl
-	virtual/glu
-	|| ( >=net-misc/wget-1.9.1 >=media-tv/xmltv-0.5.43 )
-	alsa? ( >=media-libs/alsa-lib-0.9 )
-	css? ( media-libs/libdvdcss )
-	dbus? ( >=x11-libs/qt-dbus-4.4:4 )
-	directv? ( virtual/perl-Time-HiRes )
-	dvb? ( media-libs/libdvb media-tv/linuxtv-dvb-headers )
-	fftw? ( sci-libs/fftw:3.0 )
-	ieee1394? (	>=sys-libs/libraw1394-1.2.0
-			>=sys-libs/libavc1394-0.5.3
-			>=media-libs/libiec61883-1.0.0 )
-	jack? ( media-sound/jack-audio-connection-kit )
-	lcd? ( app-misc/lcdproc )
-	lirc? ( app-misc/lirc )
-	perl? ( dev-perl/DBD-mysql )
-	pulseaudio? ( >=media-sound/pulseaudio-0.9.7 )
-	python? ( dev-python/mysql-python
-			dev-python/lxml )
-	vdpau? ( x11-libs/libvdpau )
-	xvmc? ( x11-libs/libXvMC )"
-
-DEPEND="${RDEPEND}
-	app-arch/unzip
-	x11-proto/xineramaproto
-	x11-proto/xf86vidmodeproto
-	x11-apps/xinit
-	!<media-plugins/mythcontrols-0.24
-	!<x11-themes/mythtv-themes-0.24
-	!<x11-themes/mythtv-themes-extra-0.24
-	!<media-plugins/mythflix-0.24"
-
 src_unpack() {
 	git_src_unpack
 	S="${ORIGINAL_S}/mythtv"
@@ -152,15 +145,7 @@ pkg_setup() {
 }
 
 src_configure() {
-	local myconf="--prefix=/usr
-		--mandir=/usr/share/man
-		--libdir-name=$(get_libdir)
-		--disable-directfb
-		--dvb-path=/usr/include
-		--enable-opengl-vsync
-		--enable-x11
-		--enable-xrandr
-		--enable-xv
+	local myconf="
 		$(use_enable alsa audio-alsa)
 		$(use_enable altivec)
 		$(use_enable dvb)
@@ -168,7 +153,17 @@ src_configure() {
 		$(use_enable ieee1394 firewire)
 		$(use_enable jack audio-jack)
 		$(use_enable lirc)
-		$(use_enable vdpau)"
+		$(use_enable vdpau)
+		--disable-directfb
+		--dvb-path=/usr/include
+		--enable-opengl-vsync
+		--enable-x11
+		--enable-xrandr
+		--enable-xv
+		--libdir-name=$(get_libdir)
+		--mandir=/usr/share/man
+		--prefix=/usr
+"
 
 	use mmx || use adm64 && mm="en" || mm="dis"
 	myconf="${myconf} --${mm}able-mmx"
