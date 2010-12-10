@@ -4,13 +4,6 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
-HOMEPAGE="http://www.mythtv.org"
-DESCRIPTION="PHP scripts intended to manage MythTV from a web browser."
-LICENSE="GPL-2"
-RESTRICT="nomirror"
-SLOT="0"
-KEYWORDS="amd64 ppc x86"
-
 IUSE=""
 
 RDEPEND="dev-lang/php[json,mysql,session,posix]

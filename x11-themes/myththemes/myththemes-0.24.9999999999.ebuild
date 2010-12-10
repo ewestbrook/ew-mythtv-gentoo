@@ -11,3 +11,10 @@ MYTHBRANCH="fixes"
 GITSTAMP="9999999999"
 GITHASH=""
 inherit myththemes-1
+
+HOMEPAGE="http://www.mythtv.org"
+DESCRIPTION="A collection of themes for the MythTV project."
+LICENSE="GPL-2"
+RESTRICT="nomirror"
+SLOT="0"
+KEYWORDS="~amd64 ~ppc ~x86"

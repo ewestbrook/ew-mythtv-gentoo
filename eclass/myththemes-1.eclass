@@ -4,13 +4,6 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
-HOMEPAGE="http://www.mythtv.org"
-DESCRIPTION="A collection of themes for the MythTV project."
-LICENSE="GPL-2"
-RESTRICT="nomirror"
-SLOT="0"
-KEYWORDS="amd64 ppc x86"
-
 MY_PN="MythTV"
 VC=( $(get_all_version_components ${PV}) )
 MYTHMAJOR="${VC[0]}"

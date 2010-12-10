@@ -4,18 +4,6 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
-# @ECLASS: mythplugins-1.eclass
-# @MAINTAINER:
-# E. Westbrook <ewmgoe@westbrook.com>
-# @BLURB: This eclass provides functions for mythplugins ebuilds.
-
-HOMEPAGE="http://www.mythtv.org"
-LICENSE="GPL-2"
-RESTRICT="nomirror strip"
-DESCRIPTION="Homebrew PVR project"
-SLOT="0"
-KEYWORDS="amd64 ppc x86"
-
 MY_PN="MythTV"
 VC=( $(get_all_version_components ${PV}) )
 MYTHMAJOR="${VC[0]}"

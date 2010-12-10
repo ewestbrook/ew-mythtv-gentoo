@@ -4,18 +4,6 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
-# @ECLASS: mythtv-1.eclass
-# @MAINTAINER:
-# E. Westbrook <ewmgoe@westbrook.com>
-# @BLURB: This eclass provides functions for mythtv ebuilds.
-
-HOMEPAGE="http://www.mythtv.org"
-LICENSE="GPL-2"
-RESTRICT="nomirror strip"
-DESCRIPTION="Homebrew PVR project"
-SLOT="0"
-KEYWORDS="amd64 ppc x86"
-
 IUSE_VIDEO_CARDS="
   video_cards_nvidia
   video_cards_via
@@ -103,7 +91,7 @@ EGIT_BRANCH=$([ "fixes" == "${MYTHBRANCH}" ] && echo "fixes/${MYTHMAJOR}.${MYTHM
 inherit git
 ORIGINAL_S="${S}"
 
-if /bin/false ; then
+if /bin/true ; then
   einfo P: $P
   einfo PN: $PN
   einfo PV: $PV

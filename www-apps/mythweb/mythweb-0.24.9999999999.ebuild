@@ -11,3 +11,10 @@ MYTHBRANCH="fixes"
 GITSTAMP="9999999999"
 GITHASH=""
 inherit mythweb-1
+
+HOMEPAGE="http://www.mythtv.org"
+DESCRIPTION="PHP scripts intended to manage MythTV from a web browser."
+LICENSE="GPL-2"
+RESTRICT="nomirror"
+SLOT="0"
+KEYWORDS="~amd64 ~ppc ~x86"
