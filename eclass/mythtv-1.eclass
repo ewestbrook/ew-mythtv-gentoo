@@ -89,7 +89,7 @@ EGIT_BRANCH=$([ "fixes" == "${MYTHBRANCH}" ] && echo "fixes/${MYTHMAJOR}.${MYTHM
 inherit git
 ORIGINAL_S="${S}"
 
-if /bin/true ; then
+if /bin/false ; then
   einfo P: $P
   einfo PN: $PN
   einfo PV: $PV
