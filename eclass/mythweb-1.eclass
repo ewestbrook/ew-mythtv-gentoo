@@ -22,7 +22,6 @@ MY_PN="MythTV"
 VC=( $(get_all_version_components ${PV}) )
 MYTHMAJOR="${VC[0]}"
 MYTHMINOR="${VC[2]}"
-EBSTAMP="${VC[4]}"
 GITBRIEF=${GITHASH:0:7}
 
 EGIT_REPO_URI="git://github.com/${MY_PN}/${PN}"
@@ -39,7 +38,6 @@ if /bin/false ; then
   done
   einfo MYTHMAJOR: $MYTHMAJOR
   einfo MYTHMINOR: $MYTHMINOR
-  einfo EBSTAMP: $EBSTAMP
   einfo GITHASH: $GITHASH
   einfo GITBRIEF: $GITBRIEF
   einfo SRC_URI: $SRC_URI
