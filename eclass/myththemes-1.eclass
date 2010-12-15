@@ -35,7 +35,6 @@ if /bin/false ; then
   einfo MYTHMAJOR: $MYTHMAJOR
   einfo MYTHMINOR: $MYTHMINOR
   einfo EBSTAMP: $EBSTAMP
-  einfo GITSTAMP: $GITSTAMP
   einfo GITHASH: $GITHASH
   einfo GITBRIEF: $GITBRIEF
   einfo SRC_URI: $SRC_URI

@@ -46,8 +46,6 @@ RDEPEND="
 "
 DEPEND="${RDEPEND}"
 
-[ "$EBSTAMP" == "$GITSTAMP" ] || die "In-ebuild timestamp integer doesn't filename's.  Edit ebuild."
-
 EGIT_PROJECT="mythtv"
 EGIT_REPO_URI="git://github.com/${MY_PN}/${EGIT_PROJECT}"
 EGIT_COMMIT=$([ "" == "${GITHASH}" ] && echo "${GITBRANCH}" || echo "${GITHASH}")
@@ -67,7 +65,6 @@ if /bin/false ; then
   einfo MYTHMAJOR: $MYTHMAJOR
   einfo MYTHMINOR: $MYTHMINOR
   einfo EBSTAMP: $EBSTAMP
-  einfo GITSTAMP: $GITSTAMP
   einfo GITHASH: $GITHASH
   einfo GITBRIEF: $GITBRIEF
   einfo SRC_URI: $SRC_URI

@@ -25,15 +25,11 @@ MYTHMINOR="${VC[2]}"
 EBSTAMP="${VC[4]}"
 GITBRIEF=${GITHASH:0:7}
 
-[ "$EBSTAMP" == "$GITSTAMP" ] || die "In-ebuild timestamp integer doesn't filename's.  Edit ebuild."
-
 EGIT_REPO_URI="git://github.com/${MY_PN}/${PN}"
 EGIT_COMMIT=$([ "" == "${GITHASH}" ] && echo "${GITBRANCH}" || echo "${GITHASH}")
 EGIT_BRANCH=$([ "fixes" == "${MYTHBRANCH}" ] && echo "fixes/${MYTHMAJOR}.${MYTHMINOR}" || echo "master")
 
-inherit git
-
-if /bin/false ; then
+if /bin/true ; then
   einfo P: $P
   einfo PN: $PN
   einfo PV: $PV
@@ -44,7 +40,6 @@ if /bin/false ; then
   einfo MYTHMAJOR: $MYTHMAJOR
   einfo MYTHMINOR: $MYTHMINOR
   einfo EBSTAMP: $EBSTAMP
-  einfo GITSTAMP: $GITSTAMP
   einfo GITHASH: $GITHASH
   einfo GITBRIEF: $GITBRIEF
   einfo SRC_URI: $SRC_URI
@@ -54,6 +49,8 @@ if /bin/false ; then
   einfo ORIGINAL_S: $ORIGINAL_S
   einfo D: $D
 fi
+
+inherit git
 
 src_unpack() {
 	git_src_unpack
