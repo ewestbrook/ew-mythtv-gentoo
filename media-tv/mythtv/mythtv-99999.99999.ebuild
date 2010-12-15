@@ -7,14 +7,13 @@
 EAPI=2
 inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
 
-MYTHBRANCH="fixes"
-GITSTAMP="9999999999"
+MYTHBRANCH="master"
 GITHASH=""
-inherit mythplugins-1
+inherit mythtv-1
 
 HOMEPAGE="http://www.mythtv.org"
 LICENSE="GPL-2"
 RESTRICT="nomirror strip"
-DESCRIPTION="MythTV Plugins"
+DESCRIPTION="Homebrew PVR project"
 SLOT="0"
 KEYWORDS="~amd64 ~ppc ~x86"

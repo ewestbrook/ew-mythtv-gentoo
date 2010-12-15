@@ -7,9 +7,8 @@
 EAPI=2
 inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
 
-GITBRANCH="master"
-GITSTAMP="1291777173"
-GITHASH="b674e521028d49193c7d52fa749c556f423cd9f8"
+MYTHBRANCH="master"
+GITHASH="d968edb4c65e8fc10b87c60ad6fdce2327c886db"
 inherit mythtv-1
 
 HOMEPAGE="http://www.mythtv.org"

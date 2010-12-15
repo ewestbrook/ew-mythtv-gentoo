@@ -5,15 +5,15 @@
 ##########################################
 
 EAPI=2
-inherit webapp depend.php versionator
+inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
 
-MYTHBRANCH="master"
-GITSTAMP="9999999999"
-GITHASH=""
-inherit mythweb-1
+MYTHBRANCH="fixes"
+GITHASH="bb53a2468ca4fc4f3d87c899e16c27cffd51ff41"
+inherit mythtv-1
 
 HOMEPAGE="http://www.mythtv.org"
-DESCRIPTION="PHP scripts intended to manage MythTV from a web browser."
 LICENSE="GPL-2"
-RESTRICT="nomirror"
-KEYWORDS="~amd64 ~ppc ~x86"
+RESTRICT="nomirror strip"
+DESCRIPTION="Homebrew PVR project"
+SLOT="0"
+KEYWORDS="amd64 ppc x86"

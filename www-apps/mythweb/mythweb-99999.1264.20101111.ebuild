@@ -5,16 +5,15 @@
 ##########################################
 
 EAPI=2
-inherit qt4 versionator
+inherit webapp depend.php versionator
 
-MYTHBRANCH="fixes"
-GITSTAMP="9999999999"
-GITHASH=""
-inherit myththemes-1
+MYTHBRANCH="master"
+GITHASH="eee2a4775a04a4d82768bb23b39330c42429e4c3"
+inherit mythweb-1
 
 HOMEPAGE="http://www.mythtv.org"
-DESCRIPTION="A collection of themes for the MythTV project."
 LICENSE="GPL-2"
-RESTRICT="nomirror"
+RESTRICT="nomirror strip"
+DESCRIPTION="Homebrew PVR project"
 SLOT="0"
 KEYWORDS="~amd64 ~ppc ~x86"
