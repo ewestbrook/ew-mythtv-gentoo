@@ -8,7 +8,6 @@ MY_PN="MythTV"
 VC=( $(get_all_version_components ${PV}) )
 MYTHMAJOR="${VC[0]}"
 MYTHMINOR="${VC[2]}"
-GITBRIEF=${GITHASH:0:7}
 
 IUSE="
   debug
@@ -64,7 +63,6 @@ if /bin/false ; then
   einfo MYTHMAJOR: $MYTHMAJOR
   einfo MYTHMINOR: $MYTHMINOR
   einfo GITHASH: $GITHASH
-  einfo GITBRIEF: $GITBRIEF
   einfo SRC_URI: $SRC_URI
   einfo EGIT_REPO_URI: $EGIT_REPO_URI
   einfo EGIT_COMMIT: $EGIT_COMMIT
