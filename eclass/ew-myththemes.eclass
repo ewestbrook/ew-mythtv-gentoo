@@ -61,9 +61,4 @@ src_compile() {
 
 src_install() {
 	einstall INSTALL_ROOT="${D}" || die "install failed"
-	for i in /ds2/home/eric/dev/mythtv/themes/* ; do
-		j=$(basename $i)
-		einfo Symlinking user theme: $j
-		# dosym /usr/share/mythtv/themes/$j /ds2/home/eric/dev/mythtv/themes/$j
-	done
 }
