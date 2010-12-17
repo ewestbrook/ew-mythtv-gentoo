@@ -9,7 +9,7 @@ inherit qt4 versionator
 
 MYTHBRANCH="fixes"
 GITHASH="8afb0867fc8d258722b9c5d2944a5729a339ed0c"
-inherit myththemes-1
+inherit ew-myththemes
 
 HOMEPAGE="http://www.mythtv.org"
 LICENSE="GPL-2"

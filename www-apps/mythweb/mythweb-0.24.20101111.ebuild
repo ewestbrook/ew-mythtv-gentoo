@@ -9,7 +9,7 @@ inherit webapp depend.php versionator
 
 MYTHBRANCH="fixes"
 GITHASH="bc2ac050d68160406264edd9bd1f285c9f388334"
-inherit mythweb-1
+inherit ew-mythweb
 
 HOMEPAGE="http://www.mythtv.org"
 LICENSE="GPL-2"

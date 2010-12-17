@@ -9,7 +9,7 @@ inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
 
 MYTHBRANCH="fixes"
 GITHASH="c6d47f6f68177996fa8af1b6cf78c6fa1e6b72c4"
-inherit mythplugins-1
+inherit ew-mythplugins
 
 HOMEPAGE="http://www.mythtv.org"
 LICENSE="GPL-2"
