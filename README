@@ -9,26 +9,26 @@ Clean, proper, and up-to-date Gentoo ebuilds for MythTV.
 Full documentation at:
 https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/
 
-Setup:
+One-Time Setup:
 
-$ mkdir -pv /usr/local/overlays
-$ cd /usr/local/overlays
-$ git clone git://github.com/ewestbrook/ew-mythtv-gentoo.git
-$ echo 'PORTDIR_OVERLAY="$PORTDIR_OVERLAY /usr/local/overlays/ew-mythtv-gentoo"' >> /etc/make.conf
-$ for i in media-plugins/myth{archive,browser,flix,gallery,movies,music,news,video,weather,zoneminder} x11-themes/mythtv-themes{,-extra} ; do echo "$i" >> /etc/portage/package.mask ; done
-$ for i in media-tv/mythtv media-plugins/mythplugins x11-themes/myththemes www-apps/mythweb ; do echo $i >> /etc/portage/package.unmask ; done
-$ emerge -Cav mythtv mythweb mythtv-themes mythtv-themes-extra mytharchive mythbrowser mythflix mythgallery mythgame mythmovies mythmusic mythnetvision mythnews mythvideo mythweather mythzoneminder
-$ emerge -tav mythtv mythplugins mythweb myththemes
+# mkdir -pv /usr/local/overlays
+# cd /usr/local/overlays
+# git clone git://github.com/ewestbrook/ew-mythtv-gentoo.git
+# echo 'PORTDIR_OVERLAY="$PORTDIR_OVERLAY /usr/local/overlays/ew-mythtv-gentoo"' >> /etc/make.conf
+# for i in $(cat sets/notmythtv) ; do echo "$i" >> /etc/portage/package.mask ; done
+# for i in $(cat sets/mythtv) ; do echo $i >> /etc/portage/package.unmask ; done
+# emerge -Cav @not-mythtv
+# emerge -tav @mythtv
 
-Updating:
+Regular Updating:
 
-$ cd /usr/local/overlays/ew-mythtv-gentoo
-$ git pull
-$ emerge -utavDN world
+# cd /usr/local/overlays/ew-mythtv-gentoo
+# git pull
+# emerge -utavDN world
 
-Auto-updating:
+Adding Automatic Updating to cron:
 
-$ CRONSEC=$RANDOM ; let "CRONSEC %= 60" ; (crontab -l | grep -v '#' ; echo "$CRONSEC 1 * * * cd /usr/local/overlays/ew-mythtv-gentoo ; git pull") | crontab -
+# CRONSEC=$RANDOM ; let "CRONSEC %= 60" ; (crontab -l | grep -v '#' ; echo "$CRONSEC 1 * * * cd /usr/local/overlays/ew-mythtv-gentoo ; git pull") | crontab -
 
 Full documentation at:
 https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/
