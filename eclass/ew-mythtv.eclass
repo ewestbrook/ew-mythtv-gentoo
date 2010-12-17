@@ -4,6 +4,15 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
+EAPI=2
+inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
+
+HOMEPAGE="http://www.mythtv.org"
+LICENSE="GPL-2"
+RESTRICT="nomirror strip"
+DESCRIPTION="Homebrew PVR project"
+SLOT="0"
+
 IUSE_VIDEO_CARDS="
   video_cards_nvidia
   video_cards_via
@@ -81,10 +90,10 @@ MYTHMAJOR="${VC[0]}"
 MYTHMINOR="${VC[2]}"
 
 EGIT_REPO_URI="git://github.com/${MY_PN}/${PN}"
-EGIT_COMMIT=$([ "" == "${GITHASH}" ] && echo "${GITBRANCH}" || echo "${GITHASH}")
+EGIT_COMMIT=$([ "" == "${GITHASH}" ] && echo "${MYTHCOMMIT}" || echo "${GITHASH}")
 EGIT_BRANCH=$([ "fixes" == "${MYTHBRANCH}" ] && echo "fixes/${MYTHMAJOR}.${MYTHMINOR}" || echo "master")
-
 inherit git
+
 ORIGINAL_S="${S}"
 
 if /bin/false ; then

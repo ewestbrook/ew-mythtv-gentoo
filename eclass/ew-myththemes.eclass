@@ -4,6 +4,15 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
+EAPI=2
+inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
+
+HOMEPAGE="http://www.mythtv.org"
+LICENSE="GPL-2"
+RESTRICT="nomirror strip"
+DESCRIPTION="Themes for MythTV"
+SLOT="0"
+
 MY_PN="MythTV"
 VC=( $(get_all_version_components ${PV}) )
 MYTHMAJOR="${VC[0]}"

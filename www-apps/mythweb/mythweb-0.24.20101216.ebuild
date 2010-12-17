@@ -4,15 +4,7 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
-EAPI=2
-inherit webapp depend.php versionator
-
 MYTHBRANCH="fixes"
-GITHASH="52cb8fb98f1aa209cfd2befa92a9cdd0b7841070"
-inherit ew-mythweb
-
-HOMEPAGE="http://www.mythtv.org"
-LICENSE="GPL-2"
-RESTRICT="nomirror strip"
-DESCRIPTION="Homebrew PVR project"
+MYTHCOMMIT="4753643423312953aa303e91b5a1fce11a4f9759"
 KEYWORDS="amd64 ppc x86"
+inherit ew-mythweb

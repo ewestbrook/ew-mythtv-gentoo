@@ -4,16 +4,7 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
-EAPI=2
-inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
-
 MYTHBRANCH="master"
-GITHASH="124b07a0cb64d6b0b8832f621ac1682d0ea9cad3"
-inherit ew-mythtv
-
-HOMEPAGE="http://www.mythtv.org"
-LICENSE="GPL-2"
-RESTRICT="nomirror strip"
-DESCRIPTION="Homebrew PVR project"
+MYTHCOMMIT="124b07a0cb64d6b0b8832f621ac1682d0ea9cad3"
 KEYWORDS="~amd64 ~ppc ~x86"
-SLOT="0"
+inherit ew-mythtv

@@ -8,10 +8,10 @@ EW::Time::p('tz' => 'UTC');
 my $targ = $ARGV[0];
 die "need a target time" unless $targ;
 
-# my $ct = 1291174002;
-# my $ct = 1291777173;
-# my $ct = 1292090693;
-# my $ct = 20101211;
+my $forcewrite = 1;
+my $ebuildsonly = 1;
+my $gitloglevel = DBGVERBOSE;
+
 my $t = EW::Time->new($targ);
 my $ct = $t->tostring("%Y%m%d");
 my $ctlong = $t->tostring("%Y-%m-%d %H:%M:%S");
@@ -22,31 +22,25 @@ my $ewmgoe = '/ds2/home/eric/dev/git/ew-mythtv-gentoo';
 
 dbg("time: $ct/$epoch/$t", DBGVERBOSE);
 
-my $gitloglevel = DBGVERBOSE;
-
 my %branches = ('master' => { 'ver' => '99999', 'dbv' => 1, 'arch' => '~'}
                 , 'fixes/0.24' => { 'ver' => '0.24', 'dbv' => 0, 'arch' => ''}
                );
 
 my %packages = ('0' => { 'pkg' => 'mythtv'
                          , 'mythdir' => "$mythdir/mythtv"
-                         , 'ewmgoe' => "$ewmgoe/media-tv/mythtv"
-                         , 'inherits' => 'flag-o-matic multilib eutils qt4 toolchain-funcs python versionator' }
+                         , 'ewmgoe' => "$ewmgoe/media-tv/mythtv" }
 
                 , '1' => { 'pkg' => 'mythplugins'
                            , 'mythdir' => "$mythdir/mythtv"
-                           , 'ewmgoe' => "$ewmgoe/media-plugins/mythplugins"
-                           , 'inherits' => 'flag-o-matic multilib eutils qt4 toolchain-funcs python versionator' }
+                           , 'ewmgoe' => "$ewmgoe/media-plugins/mythplugins" }
 
                 , '2' => { 'pkg' => 'mythweb'
                            , 'mythdir' => "$mythdir/mythweb"
-                           , 'ewmgoe' => "$ewmgoe/www-apps/mythweb"
-                           , 'inherits' => 'webapp depend.php versionator' }
+                           , 'ewmgoe' => "$ewmgoe/www-apps/mythweb" }
 
                 , '3' => { 'pkg' => 'myththemes'
                            , 'mythdir' => "$mythdir/myththemes"
-                           , 'ewmgoe' => "$ewmgoe/x11-themes/myththemes"
-                           , 'inherits' => 'qt4 versionator' }
+                           , 'ewmgoe' => "$ewmgoe/x11-themes/myththemes" }
                );
 
 foreach my $br (keys %branches) {
@@ -57,7 +51,7 @@ foreach my $br (keys %branches) {
 
     # select build repo with chdir
     chdir($p->{'mythdir'});
-    dbg("Entering: $p->{'mythdir'}", DBGVERBOSE);
+    # dbg("Entering: $p->{'mythdir'}", DBGVERBOSE);
     my $hash = '';
 
     # get hash of desired commit
@@ -84,16 +78,16 @@ foreach my $br (keys %branches) {
 
     # chdir to our ebuild directory for this package
     chdir($p->{'ewmgoe'});
-    dbg("Entering: $p->{'ewmgoe'}");
+    # dbg("Entering: $p->{'ewmgoe'}");
 
     # construct ebuild filename
     my $fname = "$p->{'ewmgoe'}/$p->{'pkg'}-$bb->{'ver'}"
       . ($bb->{'dbv'} ? ${schemaver} : '')
         . ".$ct.ebuild";
 
-    # create ebuild if not exist
+    # create ebuild if not exist or forced
     my $created = 0;
-    if (! -e $fname) {
+    if ($forcewrite || ! -e $fname) {
 
       # but only if no older ebuild exists with same hash
       my $glob = "$p->{'pkg'}-$bb->{'ver'}"
@@ -107,9 +101,9 @@ foreach my $br (keys %branches) {
 
       } else {
 
-        my $lines = ebuildcontent($p->{'pkg'}, $br, $ct, $hash, $bb->{'arch'}, $p->{'inherits'});
+        my $lines = ebuildcontent($p->{'pkg'}, $br, $hash, $bb->{'arch'});
         EW::File::writelines($fname, $lines);
-        dbg("Wrote: $fname");
+        dbg("Written: $fname");
         $created = 1;
 
       }
@@ -117,19 +111,31 @@ foreach my $br (keys %branches) {
       dbg("Exists: $fname");
     }
 
+    # touch up the branch's "bleeding 9s" ebuild if different or forced
+    my $bfname = "$p->{'ewmgoe'}/$p->{'pkg'}-$bb->{'ver'}.99999999.ebuild";
+    my $oldlines = (-e $bfname ? EW::File::readlines($bfname) : []);
+    my $lines = ebuildcontent($p->{'pkg'}, $br, '', '~');
+    if ($forcewrite || !EW::Collection::equiv($oldlines, $lines)) {
+      EW::File::writelines($bfname, $lines);
+      dbg("Written: $bfname");
+    }
+
     # update manifest if not exist or too old
     my $mfest = $p->{'ewmgoe'} . "/Manifest";
     my $mtm = EW::File::mtime($mfest);
     my $mtf = EW::File::mtime($fname);
-    if (! -e $mfest || $mtm < $mtf) {
-      my ($pi, $pe) = EW::Sys::do("ebuild $fname digest");
-      dbg("Manifest updated.");
+    my $mtb = EW::File::mtime($bfname);
+    if (! -e $mfest || $mtm < $mtf || $mtm < $mtb) {
+      if (!$ebuildsonly) {
+        my ($pi, $pe) = EW::Sys::do("ebuild $fname digest");
+        dbg("Manifest updated.");
+      }
     } else {
       dbg("Manifest ok.", DBGVERBOSE);
     }
 
     # test new ebuild for good fetch
-    if ($created) {
+    if ($created && !$ebuildsonly) {
       EW::Sys::do("sudo ebuild $fname clean", $gitloglevel, $gitloglevel);
       my ($ro, $re) = EW::Sys::do("sudo ebuild $fname prepare", $gitloglevel, $gitloglevel);
       EW::Sys::do("sudo ebuild $fname clean", $gitloglevel, $gitloglevel);
@@ -145,7 +151,7 @@ foreach my $br (keys %branches) {
 }
 
 sub ebuildcontent {
-  my ($pkg, $branch, $stamp, $hash, $arch, $inherits) = @_;
+  my ($pkg, $branch, $hash, $arch) = @_;
   $branch = (split('/', $branch))[0];
   my @lines = ('##########################################'
                , '# EW MythTV Gentoo Overlay Ebuilds       #'
@@ -153,19 +159,10 @@ sub ebuildcontent {
                , '# E. Westbrook <ewmgoe@westbrook.com>    #'
                , '##########################################'
                , ''
-               , 'EAPI=2'
-               , "inherit $inherits"
-               , ''
                , "MYTHBRANCH=\"$branch\""
-               , "GITHASH=\"$hash\""
-               , "inherit ${pkg}-1"
-               , ''
-               , 'HOMEPAGE="http://www.mythtv.org"'
-               , 'LICENSE="GPL-2"'
-               , 'RESTRICT="nomirror strip"'
-               , 'DESCRIPTION="Homebrew PVR project"'
+               , "MYTHCOMMIT=\"$hash\""
                , "KEYWORDS=\"${arch}amd64 ${arch}ppc ${arch}x86\""
+               , "inherit ew-${pkg}"
               );
-  push @lines, 'SLOT="0"' unless 'mythweb' eq $pkg;
   return \@lines;
 }

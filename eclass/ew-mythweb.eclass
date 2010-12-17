@@ -4,6 +4,14 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
+EAPI=2
+inherit webapp depend.php versionator
+
+HOMEPAGE="http://www.mythtv.org"
+LICENSE="GPL-2"
+RESTRICT="nomirror strip"
+DESCRIPTION="Web interface for MythTV"
+
 IUSE=""
 
 RDEPEND="dev-lang/php[json,mysql,session,posix]
