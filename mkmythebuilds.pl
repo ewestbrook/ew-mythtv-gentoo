@@ -8,8 +8,8 @@ EW::Time::p('tz' => 'UTC');
 my $targ = $ARGV[0];
 die "need a target time" unless $targ;
 
-my $forcewrite = 1;
-my $ebuildsonly = 1;
+my $forcewrite = 0;
+my $ebuildsonly = 0;
 my $gitloglevel = DBGVERBOSE;
 
 my $t = EW::Time->new($targ);
