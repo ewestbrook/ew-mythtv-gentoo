@@ -4,7 +4,7 @@ Licensed under GPL-2
 https://github.com/ewestbrook/ew-mythtv-gentoo
 E. Westbrook <ewmgoe@westbrook.com>
 
-Clean, efficient, regularly updated Gentoo ebuilds for MythTV.
+Clean, proper, and up-to-date Gentoo ebuilds for MythTV.
 
 Full documentation:
 https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/
@@ -12,17 +12,22 @@ https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/
 First time setup:
 https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/First-Time-Setup
 
-1.  Clone this repo into a local directory
-2.  Add that directory to PORTDIR_OVERLAY in /etc/make.conf
-3.  (Optional) Mask and Unmask to taste
-4.  (Optional) Edit USE flags to taste
-5.  Emerge
+$ mkdir -pv /usr/local/overlays
+$ cd /usr/local/overlays
+$ git clone git://github.com/ewestbrook/ew-mythtv-gentoo.git
+$ echo 'PORTDIR_OVERLAY="$PORTDIR_OVERLAY /usr/local/overlays/ew-mythtv-gentoo"' >> /etc/make.conf
+$ emerge -Cav mythtv mythweb mythtv-themes mythtv-themes-extra mytharchive mythbrowser mythflix mythgallery mythgame mythmovies mythmusic mythnetvision mythnews mythvideo mythweather mythzoneminder
+$ emerge -tav mythtv mythplugins mythweb myththemes
 
 Updating:
 https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/Updating
 
-1.  Update your local repo
-2.  Emerge
+$ cd /usr/local/overlays/ew-mythtv-gentoo
+$ git pull
+$ emerge -utavDN world
+
+Auto-updating:
+$ (crontab -l ; echo "22 1 * * * cd /usr/local/overlays/ew-mythtv-gentoo ; git pull") | crontab -
 
 Full documentation at:
 https://github.com/ewestbrook/ew-mythtv-gentoo/wiki/
