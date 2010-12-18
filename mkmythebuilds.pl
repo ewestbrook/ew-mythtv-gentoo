@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
 
+use File::Basename;
 use EW::Debug;
 use EW::Sys;
 use EW::Time;
@@ -9,21 +10,25 @@ my $targ = $ARGV[0];
 die "need a target time" unless $targ;
 
 my $forcewrite = 0;
-my $ebuildsonly = 0;
+my $ebuildsonly = 1;
 my $gitloglevel = DBGVERBOSE;
 
 my $t = EW::Time->new($targ);
-my $ct = $t->tostring("%Y%m%d");
+my $ct = $t->tostring("%Y%m%d.%H%M%S");
 my $ctlong = $t->tostring("%Y-%m-%d %H:%M:%S");
 my $epoch = $t->epoch;
 
 my $mythdir = '/ds2/home/eric/dev/mythtv/src/git';
 my $ewmgoe = '/ds2/home/eric/dev/git/ew-mythtv-gentoo';
+my $dbfile = "$ewmgoe/hashdb.txt";
+
+my %db = ();
+dbread(\%db);
 
 dbg("time: $ct/$epoch/$t", DBGVERBOSE);
 
 my %branches = ('master' => { 'ver' => '99999', 'dbv' => 1, 'arch' => '~'}
-                , 'fixes/0.24' => { 'ver' => '0.24', 'dbv' => 0, 'arch' => ''}
+                , 'fixes/0.24' => { 'ver' => '0.24.0', 'dbv' => 0, 'arch' => ''}
                );
 
 my %packages = ('0' => { 'pkg' => 'mythtv'
@@ -46,7 +51,7 @@ my %packages = ('0' => { 'pkg' => 'mythtv'
 foreach my $br (keys %branches) {
   my $bb = $branches{$br};
   my $schemaver = '';
-  foreach my $j (sort { $a <=> $b } keys %packages) {
+  PKG: foreach my $j (sort { $a <=> $b } keys %packages) {
     my $p = $packages{$j};
 
     # select build repo with chdir
@@ -65,6 +70,19 @@ foreach my $br (keys %branches) {
     die "Can't obtain hash for $p->{'pkg'}/$br/$ct" unless $hash;
     dbg("At $ct: $p->{'pkg'}/$br -> $hash", DBGVERBOSE);
 
+    # see if that hash is used by an ebuild already
+    my $glob = "$p->{'ewmgoe'}/*.ebuild";
+    my @globfiles = glob($glob);
+    foreach my $i (@globfiles) {
+      next if $i =~ /$ct/;
+      my $lines = EW::File::readlines($i);
+      my @lhs = grep(/$hash/, @$lines);
+      if (scalar(@lhs)) {
+        dbg("Skipping $p->{'pkg'}-$br-$ct: Hash already used in " . basename($i));
+        next PKG;
+      }
+    }
+
     # get schema version if dbv specified
     EW::Sys::do("git co $hash", $gitloglevel, $gitloglevel);
     my $dbcheckfile = "$p->{'mythdir'}/mythtv/libs/libmythtv/dbcheck.cpp";
@@ -76,39 +94,26 @@ foreach my $br (keys %branches) {
       $schemaver = ".$1";
     }
 
+    # construct ebuild filename
+    my $bn = "$p->{'pkg'}-$bb->{'ver'}"
+      . ($bb->{'dbv'} ? ${schemaver} : '')
+        . ".$ct";
+    my $fname = "$p->{'ewmgoe'}/${bn}.ebuild";
+
     # chdir to our ebuild directory for this package
     chdir($p->{'ewmgoe'});
-    # dbg("Entering: $p->{'ewmgoe'}");
-
-    # construct ebuild filename
-    my $fname = "$p->{'ewmgoe'}/$p->{'pkg'}-$bb->{'ver'}"
-      . ($bb->{'dbv'} ? ${schemaver} : '')
-        . ".$ct.ebuild";
 
     # create ebuild if not exist or forced
     my $created = 0;
     if ($forcewrite || ! -e $fname) {
 
-      # but only if no older ebuild exists with same hash
-      my $glob = "$p->{'pkg'}-$bb->{'ver'}"
-        . ($bb->{'dbv'} ? '.*' : '')
-          . ".*.ebuild";
-      my @oldebuilds = glob($glob);
-      my @matchers = grep(/$hash/, @oldebuilds);
-      if (scalar(@matchers) > 0) {
+      my $lines = ebuildcontent($p->{'pkg'}, $br, $hash, $bb->{'arch'});
+      EW::File::writelines($fname, $lines);
+      dbg("Written: $bn");
+      $created = 1;
 
-        dbg("Hash hasn't changed from: " . join(', ', @matchers));
-
-      } else {
-
-        my $lines = ebuildcontent($p->{'pkg'}, $br, $hash, $bb->{'arch'});
-        EW::File::writelines($fname, $lines);
-        dbg("Written: $fname");
-        $created = 1;
-
-      }
     } else {
-      dbg("Exists: $fname");
+      dbg("Exists: $bn");
     }
 
     # touch up the branch's "bleeding 9s" ebuild if different or forced
@@ -142,7 +147,7 @@ foreach my $br (keys %branches) {
       if (grep(/Source prepared./, @$ro)) {
         dbg("Good prepare cycle.");
       } else {
-        dbg("WARNING: PREPARE FAILED: $fname\n +++ "
+        dbg("WARNING: PREPARE FAILED: $bn\n +++ "
             . join("\n +++ ", grep(/\bdie\b/, @$ro))
             , DBGWARN);
       }
@@ -166,3 +171,23 @@ sub ebuildcontent {
               );
   return \@lines;
 }
+
+sub dbgrok {
+  my ($db, $lines) = @_;
+  foreach my $line (@$lines) {
+    if (my ($pkg, $br, $ct, $hash) = split(',', $line)) {
+      $db->{$pkg}{$br}{'byhash'}{$hash} = $ct;
+      $db->{$pkg}{$br}{'bytime'}{$ct} = $hash;
+    }
+  }
+}
+
+sub dbread {
+  my $db = shift;
+  if (-e $dbfile) {
+    my $lines = EW::File::readlines($dbfile);
+    dbgrok($db, $lines);
+  }
+  return $db;
+}
+
