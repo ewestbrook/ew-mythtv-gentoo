@@ -5,13 +5,12 @@
 ##########################################
 
 EAPI=2
-inherit flag-o-matic multilib eutils qt4 toolchain-funcs python versionator
+inherit eutils versionator flag-o-matic multilib qt4 toolchain-funcs python
 
-HOMEPAGE="http://www.mythtv.org"
-LICENSE="GPL-2"
-RESTRICT="nomirror strip"
+EGIT_PROJECT="mythtv"
 DESCRIPTION="Homebrew PVR project"
 SLOT="0"
+inherit ew-mythtv-base
 
 IUSE_VIDEO_CARDS="
   video_cards_nvidia
@@ -83,37 +82,6 @@ DEPEND="
 	x11-proto/xf86vidmodeproto
 	x11-apps/xinit
 "
-
-MY_PN="MythTV"
-VC=( $(get_all_version_components ${PV}) )
-MYTHMAJOR="${VC[0]}"
-MYTHMINOR="${VC[2]}"
-
-EGIT_REPO_URI="git://github.com/${MY_PN}/${PN}"
-EGIT_COMMIT=$([ "" == "${GITHASH}" ] && echo "${MYTHCOMMIT}" || echo "${GITHASH}")
-EGIT_BRANCH=$([ "fixes" == "${MYTHBRANCH}" ] && echo "fixes/${MYTHMAJOR}.${MYTHMINOR}" || echo "master")
-inherit git
-
-ORIGINAL_S="${S}"
-
-if /bin/false ; then
-  einfo P: $P
-  einfo PN: $PN
-  einfo PV: $PV
-  einfo MY_PN: $MY_PN
-  for ((n=0; n < ${#VC[*]}; n++)) ; do
-	  einfo VC[$n]: ${VC[$n]}
-  done
-  einfo MYTHMAJOR: $MYTHMAJOR
-  einfo MYTHMINOR: $MYTHMINOR
-  einfo GITHASH: $GITHASH
-  einfo SRC_URI: $SRC_URI
-  einfo EGIT_REPO_URI: $EGIT_REPO_URI
-  einfo EGIT_COMMIT: $EGIT_COMMIT
-  einfo EGIT_BRANCH: $EGIT_BRANCH
-  einfo ORIGINAL_S: $ORIGINAL_S
-  einfo D: $D
-fi
 
 src_unpack() {
 	git_src_unpack

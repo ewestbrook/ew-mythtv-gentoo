@@ -7,14 +7,15 @@
 EAPI=2
 inherit webapp depend.php versionator
 
-HOMEPAGE="http://www.mythtv.org"
-LICENSE="GPL-2"
-RESTRICT="nomirror strip"
+EGIT_PROJECT="mythweb"
 DESCRIPTION="Web interface for MythTV"
+inherit ew-mythtv-base
 
 IUSE=""
 
-RDEPEND="dev-lang/php[json,mysql,session,posix]
+RDEPEND="
+	>=media-tv/mythtv-${PV}
+	dev-lang/php[json,mysql,session,posix]
 	|| ( <dev-lang/php-5.3[spl,pcre] >=dev-lang/php-5.3 )
 	dev-perl/DBI
 	dev-perl/DBD-mysql
@@ -25,36 +26,6 @@ DEPEND="${RDEPEND}
 
 need_httpd_cgi
 need_php5_httpd
-
-MY_PN="MythTV"
-VC=( $(get_all_version_components ${PV}) )
-MYTHMAJOR="${VC[0]}"
-MYTHMINOR="${VC[2]}"
-
-EGIT_REPO_URI="git://github.com/${MY_PN}/${PN}"
-EGIT_COMMIT=$([ "" == "${GITHASH}" ] && echo "${GITBRANCH}" || echo "${GITHASH}")
-EGIT_BRANCH=$([ "fixes" == "${MYTHBRANCH}" ] && echo "fixes/${MYTHMAJOR}.${MYTHMINOR}" || echo "master")
-
-if /bin/false ; then
-  einfo P: $P
-  einfo PN: $PN
-  einfo PV: $PV
-  einfo MY_PN: $MY_PN
-  for ((n=0; n < ${#VC[*]}; n++)) ; do
-	  einfo VC[$n]: ${VC[$n]}
-  done
-  einfo MYTHMAJOR: $MYTHMAJOR
-  einfo MYTHMINOR: $MYTHMINOR
-  einfo GITHASH: $GITHASH
-  einfo SRC_URI: $SRC_URI
-  einfo EGIT_REPO_URI: $EGIT_REPO_URI
-  einfo EGIT_COMMIT: $EGIT_COMMIT
-  einfo EGIT_BRANCH: $EGIT_BRANCH
-  einfo ORIGINAL_S: $ORIGINAL_S
-  einfo D: $D
-fi
-
-inherit git
 
 src_unpack() {
 	git_src_unpack
