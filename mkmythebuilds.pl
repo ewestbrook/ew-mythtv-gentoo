@@ -1,6 +1,9 @@
 #!/usr/bin/perl -w
 
+use lib '/home/eric/dev/perl/EW/lib';
+
 use File::Basename;
+use EW::DBI;
 use EW::Debug;
 use EW::Sys;
 use EW::Time;
@@ -20,10 +23,8 @@ my $epoch = $t->epoch;
 
 my $mythdir = '/ds2/home/eric/dev/mythtv/src/git';
 my $ewmgoe = '/ds2/home/eric/dev/git/ew-mythtv-gentoo';
-my $dbfile = "$ewmgoe/hashdb.txt";
 
-my %db = ();
-dbread(\%db);
+my $db = EW::DBI->new('mysql', 'vs01:mythconverg', 'mythtv', 'mythtv') or die "Can't open DB";
 
 dbg("time: $ct/$epoch/$t", DBGVERBOSE);
 
@@ -32,43 +33,56 @@ my %branches = ('master' => { 'ver' => '99999', 'dbv' => 1, 'arch' => '~'}
                );
 
 my %packages = ('0' => { 'pkg' => 'mythtv'
+                         , 'pgrep' => 'mythtv'
                          , 'mythdir' => "$mythdir/mythtv"
                          , 'ewmgoe' => "$ewmgoe/media-tv/mythtv" }
 
                 , '1' => { 'pkg' => 'mythplugins'
+                           , 'pgrep' => 'mythtv'
                            , 'mythdir' => "$mythdir/mythtv"
                            , 'ewmgoe' => "$ewmgoe/media-plugins/mythplugins" }
 
                 , '2' => { 'pkg' => 'mythweb'
+                           , 'pgrep' => 'mythweb'
                            , 'mythdir' => "$mythdir/mythweb"
                            , 'ewmgoe' => "$ewmgoe/www-apps/mythweb" }
 
                 , '3' => { 'pkg' => 'myththemes'
+                           , 'pgrep' => 'myththemes'
                            , 'mythdir' => "$mythdir/myththemes"
                            , 'ewmgoe' => "$ewmgoe/x11-themes/myththemes" }
+
+                , '4' => { 'pkg' => 'nuvexport'
+                           , 'pgrep' => 'nuvexport'
+                           , 'mythdir' => "$mythdir/nuvexport"
+                           , 'ewmgoe' => "$ewmgoe/media-video/nuvexport" }
                );
 
 foreach my $br (keys %branches) {
   my $bb = $branches{$br};
-  my $schemaver = '';
   PKG: foreach my $j (sort { $a <=> $b } keys %packages) {
     my $p = $packages{$j};
+    my $pkg = $p->{'pkg'};
+    my $pgrep = $p->{'pgrep'};
 
-    # select build repo with chdir
-    chdir($p->{'mythdir'});
-    # dbg("Entering: $p->{'mythdir'}", DBGVERBOSE);
-    my $hash = '';
-
-    # get hash of desired commit
-    foreach my $c ("git co $br"
-                   # , 'git fetch'
-                   # , 'git pull'
-                   , "git log -n1 --pretty=\"format:%H\" --until=\"$ctlong\"") {
-      my ($so, $se) = EW::Sys::do($c, $gitloglevel, $gitloglevel);
-      $hash = $so->[0];
+    # obtain hash
+    dbg("Searching for $pkg/$br/$ct");
+    my ($hashepoch, $hash) = @{$db->getrow(qq{
+      select epoch, hash
+      from gitscan
+      where pkg = ?
+        and branch = ?
+        and epoch <= ?
+      order by epoch desc
+      limit 1 
+    }, $pgrep, ('nuvexport' ne $pkg ? $br : 'master'), $epoch)};
+    if (!$hash) {
+      dbg("Can't obtain hash for $pkg/$br/$epoch");
+      next PKG;
     }
-    die "Can't obtain hash for $p->{'pkg'}/$br/$ct" unless $hash;
-    dbg("At $ct: $p->{'pkg'}/$br -> $hash", DBGVERBOSE);
+    my $hashtime = EW::Time->new($hashepoch);
+    my $ht = $hashtime->tostring("%Y%m%d.%H%M%S");
+    dbg("At $epoch: $pkg/$br -> $hash ($hashepoch/$ht)");
 
     # see if that hash is used by an ebuild already
     my $glob = "$p->{'ewmgoe'}/*.ebuild";
@@ -78,26 +92,33 @@ foreach my $br (keys %branches) {
       my $lines = EW::File::readlines($i);
       my @lhs = grep(/$hash/, @$lines);
       if (scalar(@lhs)) {
-        dbg("Skipping $p->{'pkg'}-$br-$ct: Hash already used in " . basename($i));
+        dbg("Skipping $pkg-$br-$ct: Hash already used in " . basename($i));
         next PKG;
       }
     }
 
     # get schema version if dbv specified
-    EW::Sys::do("git co $hash", $gitloglevel, $gitloglevel);
-    my $dbcheckfile = "$p->{'mythdir'}/mythtv/libs/libmythtv/dbcheck.cpp";
-    if ((!$schemaver || $bb->{'dbv'}) && -e $dbcheckfile) {
-      my $dbcheckcpp = EW::File::readlines($dbcheckfile);
-      my $dbvre = qr/^const QString currentDatabaseVersion = \"(\d+)\";$/;
-      my @dbverlines = grep(/$dbvre/, @$dbcheckcpp);
-      $dbverlines[0] =~ /$dbvre/;
-      $schemaver = ".$1";
+    my $schemaver;
+    if ($bb->{'dbv'}) {
+      $schemaver = $db->getval(qq{
+      select max(dbschemaver)
+      from gitscan
+      where pkg = 'mythtv'
+        and branch = ?
+        and epoch <= ?
+    }, $br, $hashepoch);
+      if (!$schemaver) {
+        dbg("Can't get schema version for $br at $hashepoch");
+        next PKG;
+      } else {
+        dbg("Schema level on branch $br at $hashepoch: $schemaver");
+      }
     }
 
     # construct ebuild filename
-    my $bn = "$p->{'pkg'}-$bb->{'ver'}"
-      . ($bb->{'dbv'} ? ${schemaver} : '')
-        . ".$ct";
+    my $bn = "$pkg-$bb->{'ver'}"
+      . ($bb->{'dbv'} ? ".${schemaver}" : '')
+        . ".$ht";
     my $fname = "$p->{'ewmgoe'}/${bn}.ebuild";
 
     # chdir to our ebuild directory for this package
@@ -107,19 +128,19 @@ foreach my $br (keys %branches) {
     my $created = 0;
     if ($forcewrite || ! -e $fname) {
 
-      my $lines = ebuildcontent($p->{'pkg'}, $br, $hash, $bb->{'arch'});
+      my $lines = ebuildcontent($pkg, $br, $hash, $bb->{'arch'});
       EW::File::writelines($fname, $lines);
-      dbg("Written: $bn");
+      dbg("Written: ${bn}.ebuild");
       $created = 1;
 
     } else {
-      dbg("Exists: $bn");
+      dbg("Exists: ${bn}.ebuild");
     }
 
     # touch up the branch's "bleeding 9s" ebuild if different or forced
-    my $bfname = "$p->{'ewmgoe'}/$p->{'pkg'}-$bb->{'ver'}.99999999.ebuild";
+    my $bfname = "$p->{'ewmgoe'}/$pkg-$bb->{'ver'}.99999999.ebuild";
     my $oldlines = (-e $bfname ? EW::File::readlines($bfname) : []);
-    my $lines = ebuildcontent($p->{'pkg'}, $br, '', '~');
+    my $lines = ebuildcontent($pkg, $br, '', '~');
     if ($forcewrite || !EW::Collection::equiv($oldlines, $lines)) {
       EW::File::writelines($bfname, $lines);
       dbg("Written: $bfname");
