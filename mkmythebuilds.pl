@@ -21,8 +21,9 @@ my $ct = $t->tostring("%Y%m%d.%H%M%S");
 my $ctlong = $t->tostring("%Y-%m-%d %H:%M:%S");
 my $epoch = $t->epoch;
 
-my $mythdir = '/ds2/home/eric/dev/mythtv/src/git';
-my $ewmgoe = '/ds2/home/eric/dev/git/ew-mythtv-gentoo';
+my $devdir = '/ds2/home/eric/dev';
+my $mythdir = "$devdir/mythtv/src/git";
+my $ewmgoe = "$devdir/git/ew-mythtv-gentoo";
 
 my $db = EW::DBI->new('mysql', 'vs01:mythconverg', 'mythtv', 'mythtv') or die "Can't open DB";
 
