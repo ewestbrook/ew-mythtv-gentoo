@@ -14,7 +14,7 @@ inherit ew-mythtv-base
 IUSE=""
 
 RDEPEND="
-	>=media-tv/mythtv-${PV}
+	>=media-tv/mythtv-${MYTHMAJOR}.${MYTHMINOR}
 	dev-lang/php[json,mysql,session,posix]
 	|| ( <dev-lang/php-5.3[spl,pcre] >=dev-lang/php-5.3 )
 	dev-perl/DBI
