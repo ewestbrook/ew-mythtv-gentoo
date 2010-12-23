@@ -180,8 +180,7 @@ sub mkmanifest {
   my ($pkg, $pewmgoe) = @_;
   my $mfest = "$pewmgoe/Manifest";
   my $mtm = EW::File::mtime($mfest);
-  my $glob = "$pewmgoe/*.ebuild";
-  my @globfiles = glob($glob);
+  my @globfiles = (glob("$pewmgoe/*.ebuild"), glob("$pewmgoe/eclass/*.eclass"));
   my $fname = '';
   foreach $i (@globfiles) {
     my $mtf = EW::File::mtime($i);
@@ -192,7 +191,7 @@ sub mkmanifest {
   }
   return unless $fname;
   chdir($pewmgoe);
-  my ($pi, $pe) = EW::Sys::do("ebuild $fname digest");
+  my ($pi, $pe) = EW::Sys::do("ebuild $pewmgoe/*.0.24.0.ebuild digest");
   dbg("Manifest for $pkg updated.");
 }
 
