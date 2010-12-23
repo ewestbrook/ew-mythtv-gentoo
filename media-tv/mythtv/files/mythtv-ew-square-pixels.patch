@@ -14,7 +14,7 @@ diff -ru old/branches/release-0-24-fixes/mythtv/libs/libmythtv/videooutbase.cpp 
 +    int vobasp = gCoreContext->GetNumSettingOnHost("IgnorePhysicalDimensions"
 +                                                   , gCoreContext->GetHostName()
 +                                                   , 0);
-+    VERBOSE(VB_PLAYBACK, LOC + QString("IgnorePhysicalDimensions = %1").arg(vobasp));
++    /* VERBOSE(VB_PLAYBACK, LOC + QString("IgnorePhysicalDimensions = %1").arg(vobasp)); */
 +    if (vobasp) {
 +        source = "SquarePixels!";
 +        VERBOSE(VB_PLAYBACK, LOC + "Ignoring display physical dimensions; square pixels assumed.");
