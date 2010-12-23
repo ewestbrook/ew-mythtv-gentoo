@@ -65,56 +65,17 @@ foreach my $br (keys %branches) {
     my $p = $packages{$j};
     my $pkg = $p->{'pkg'};
     my $pgrep = $p->{'pgrep'};
+    my $pewmgoe = $p->{'ewmgoe'};
 
-    # obtain hash
-    dbg("Searching for $pkg/$br/$ct");
-    my ($hashepoch, $hash) = @{$db->getrow(qq{
-      select epoch, hash
-      from gitscan
-      where pkg = ?
-        and branch = ?
-        and epoch <= ?
-      order by epoch desc
-      limit 1 
-    }, $pgrep, ('nuvexport' ne $pkg ? $br : 'master'), $epoch)};
-    if (!$hash) {
-      dbg("Can't obtain hash for $pkg/$br/$epoch");
-      next PKG;
-    }
+    # get latest hash to target time
+    my ($hashepoch, $hash) = gethash($pkg, $pgrep, $br, $epoch, $pewmgoe);
+    next unless $hash;
     my $hashtime = EW::Time->new($hashepoch);
     my $ht = $hashtime->tostring("%Y%m%d.%H%M%S");
     dbg("At $epoch: $pkg/$br -> $hash ($hashepoch/$ht)");
 
-    # see if that hash is used by an ebuild already
-    my $glob = "$p->{'ewmgoe'}/*.ebuild";
-    my @globfiles = glob($glob);
-    foreach my $i (@globfiles) {
-      next if $i =~ /$ct/;
-      my $lines = EW::File::readlines($i);
-      my @lhs = grep(/$hash/, @$lines);
-      if (scalar(@lhs)) {
-        dbg("Skipping $pkg-$br-$ct: Hash already used in " . basename($i));
-        next PKG;
-      }
-    }
-
     # get schema version if dbv specified
-    my $schemaver;
-    if ($bb->{'dbv'}) {
-      $schemaver = $db->getval(qq{
-      select max(dbschemaver)
-      from gitscan
-      where pkg = 'mythtv'
-        and branch = ?
-        and epoch <= ?
-    }, $br, $hashepoch);
-      if (!$schemaver) {
-        dbg("Can't get schema version for $br at $hashepoch");
-        next PKG;
-      } else {
-        dbg("Schema level on branch $br at $hashepoch: $schemaver");
-      }
-    }
+    my $schemaver = ($p->{'dbv'} ? getschemaver($br, $hashepoch) : '');
 
     # construct ebuild filename
     my $bn = "$pkg-$bb->{'ver'}"
@@ -128,12 +89,10 @@ foreach my $br (keys %branches) {
     # create ebuild if not exist or forced
     my $created = 0;
     if ($forcewrite || ! -e $fname) {
-
       my $lines = ebuildcontent($pkg, $br, $hash, $bb->{'arch'});
       EW::File::writelines($fname, $lines);
       dbg("Written: ${bn}.ebuild");
       $created = 1;
-
     } else {
       dbg("Exists: ${bn}.ebuild");
     }
@@ -145,20 +104,6 @@ foreach my $br (keys %branches) {
     if ($forcewrite || !EW::Collection::equiv($oldlines, $lines)) {
       EW::File::writelines($bfname, $lines);
       dbg("Written: $bfname");
-    }
-
-    # update manifest if not exist or too old
-    my $mfest = $p->{'ewmgoe'} . "/Manifest";
-    my $mtm = EW::File::mtime($mfest);
-    my $mtf = EW::File::mtime($fname);
-    my $mtb = EW::File::mtime($bfname);
-    if (! -e $mfest || $mtm < $mtf || $mtm < $mtb) {
-      if (!$ebuildsonly) {
-        my ($pi, $pe) = EW::Sys::do("ebuild $fname digest");
-        dbg("Manifest updated.");
-      }
-    } else {
-      dbg("Manifest ok.", DBGVERBOSE);
     }
 
     # test new ebuild for good fetch
@@ -177,6 +122,80 @@ foreach my $br (keys %branches) {
   }
 }
 
+foreach my $i (keys %packages) {
+  my $p = $packages{$i};
+  mkmanifest($p->{'pkg'}, $p->{'ewmgoe'});
+}
+
+sub gethash {
+  my ($pkg, $pgrep, $br, $epoch, $pewmgoe) = @_;
+  dbg("Searching for $pkg/$br/$ct", DBGVERBOSE);
+  my ($hashepoch, $hash) = @{$db->getrow(qq{
+      select epoch, hash
+      from gitscan
+      where pkg = ?
+        and branch = ?
+        and epoch <= ?
+      order by epoch desc
+      limit 1 
+    }, $pgrep, ('nuvexport' ne $pkg ? $br : 'master'), $epoch)};
+  if (!$hash) {
+    dbg("Can't obtain hash for $pkg/$br/$epoch");
+    return '';
+  }
+
+  # see if that hash is used by an ebuild already
+  my $glob = "$pewmgoe/*.ebuild";
+  my @globfiles = glob($glob);
+  foreach my $i (@globfiles) {
+    next if $i =~ /$ct/;
+    my $lines = EW::File::readlines($i);
+    my @lhs = grep(/$hash/, @$lines);
+    if (scalar(@lhs)) {
+      dbg("Skipping $pkg-$br-$ct: Hash already used in " . basename($i));
+      return '';
+    }
+  }
+  return ($hashepoch, $hash);
+}
+
+sub getschemaver {
+  my ($br, $hashepoch) = @_;
+  $schemaver = $db->getval(qq{
+      select max(dbschemaver)
+      from gitscan
+      where pkg = 'mythtv'
+        and branch = ?
+        and epoch <= ?
+    }, $br, $hashepoch);
+  if (!$schemaver) {
+    dbg("Can't get schema version for $br at $hashepoch");
+    next PKG;
+  } else {
+    dbg("Schema level on branch $br at $hashepoch: $schemaver");
+  }
+}
+
+sub mkmanifest {
+  my ($pkg, $pewmgoe) = @_;
+  my $mfest = "$pewmgoe/Manifest";
+  my $mtm = EW::File::mtime($mfest);
+  my $glob = "$pewmgoe/*.ebuild";
+  my @globfiles = glob($glob);
+  my $fname = '';
+  foreach $i (@globfiles) {
+    my $mtf = EW::File::mtime($i);
+    if ($mtf >= $mtm) {
+      $fname = $i;
+      last;
+    }
+  }
+  return unless $fname;
+  chdir($pewmgoe);
+  my ($pi, $pe) = EW::Sys::do("ebuild $fname digest");
+  dbg("Manifest for $pkg updated.");
+}
+
 sub ebuildcontent {
   my ($pkg, $branch, $hash, $arch) = @_;
   $branch = (split('/', $branch))[0];
@@ -192,24 +211,5 @@ sub ebuildcontent {
                , "inherit ew-${pkg}"
               );
   return \@lines;
-}
-
-sub dbgrok {
-  my ($db, $lines) = @_;
-  foreach my $line (@$lines) {
-    if (my ($pkg, $br, $ct, $hash) = split(',', $line)) {
-      $db->{$pkg}{$br}{'byhash'}{$hash} = $ct;
-      $db->{$pkg}{$br}{'bytime'}{$ct} = $hash;
-    }
-  }
-}
-
-sub dbread {
-  my $db = shift;
-  if (-e $dbfile) {
-    my $lines = EW::File::readlines($dbfile);
-    dbgrok($db, $lines);
-  }
-  return $db;
 }
 
