@@ -87,7 +87,7 @@ foreach my $repo (keys %$repos) {
         }, $pkg, $branch, $h);
         if (!$id) {
           my $dbsv = ('mythtv' eq $pkg ? $schemavers{$branch}{$t} : undef);
-          dbg("Inserting: $h/$t");
+          dbg("Inserting: $pkg:$branch:$t:$h");
           $db->dosql(qq{
             replace into gitscan set
               pkg = ?
