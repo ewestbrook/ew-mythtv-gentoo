@@ -57,6 +57,16 @@ my %packages = ('0' => { 'pkg' => 'mythtv'
                            , 'pgrep' => 'nuvexport'
                            , 'mythdir' => "$mythdir/nuvexport"
                            , 'ewmgoe' => "$ewmgoe/media-video/nuvexport" }
+
+#                 , '5' => { 'pkg' => 'jya-mythtv'
+#                            , 'pgrep' => 'jya-mythtv'
+#                            , 'mythdir' => "$mythdir/jya-mythtv"
+#                            , 'ewmgoe' => "$ewmgoe/media-tv/jya-mythtv" }
+
+#                 , '6' => { 'pkg' => 'jya-mythplugins'
+#                            , 'pgrep' => 'jya-mythtv'
+#                            , 'mythdir' => "$mythdir/jya-mythtv"
+#                            , 'ewmgoe' => "$ewmgoe/media-plugins/jya-mythplugins" }
                );
 
 foreach my $br (keys %branches) {
@@ -75,7 +85,7 @@ foreach my $br (keys %branches) {
     dbg("At $epoch: $pkg/$br -> $hash ($hashepoch/$ht)");
 
     # get schema version if dbv specified
-    my $schemaver = ($p->{'dbv'} ? getschemaver($br, $hashepoch) : '');
+    my $schemaver = getschemaver($br, $hashepoch);
 
     # construct ebuild filename
     my $bn = "$pkg-$bb->{'ver'}"
@@ -137,7 +147,7 @@ sub gethash {
         and branch = ?
         and epoch <= ?
       order by epoch desc
-      limit 1 
+      limit 1
     }, $pgrep, ('nuvexport' ne $pkg ? $br : 'master'), $epoch)};
   if (!$hash) {
     dbg("Can't obtain hash for $pkg/$br/$epoch");
@@ -161,6 +171,7 @@ sub gethash {
 
 sub getschemaver {
   my ($br, $hashepoch) = @_;
+  return '' unless $branches{$br}{'dbv'};
   $schemaver = $db->getval(qq{
       select max(dbschemaver)
       from gitscan
@@ -170,10 +181,10 @@ sub getschemaver {
     }, $br, $hashepoch);
   if (!$schemaver) {
     dbg("Can't get schema version for $br at $hashepoch");
-    next PKG;
-  } else {
-    dbg("Schema level on branch $br at $hashepoch: $schemaver");
+    return '';
   }
+  dbg("Schema level on branch $br at $hashepoch: $schemaver");
+  return $schemaver;
 }
 
 sub mkmanifest {
@@ -184,7 +195,7 @@ sub mkmanifest {
   my $fname = '';
   foreach $i (@globfiles) {
     my $mtf = EW::File::mtime($i);
-    if ($mtf >= $mtm) {
+    if ($mtf && !$mtm || $mtf >= $mtm) {
       $fname = $i;
       last;
     }
