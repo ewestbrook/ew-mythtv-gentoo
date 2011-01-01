@@ -9,17 +9,9 @@ use EW::Sys;
 use EW::Time;
 EW::Time::p('tz' => 'UTC');
 
-my $targ = $ARGV[0];
-die "need a target time" unless $targ;
-
 my $forcewrite = 0;
 my $ebuildsonly = 1;
 my $gitloglevel = DBGVERBOSE;
-
-my $t = EW::Time->new($targ);
-my $ct = $t->tostring("%Y%m%d.%H%M%S");
-my $ctlong = $t->tostring("%Y-%m-%d %H:%M:%S");
-my $epoch = $t->epoch;
 
 my $devdir = '/ds2/home/eric/dev';
 my $mythdir = "$devdir/mythtv/src/git";
@@ -27,10 +19,8 @@ my $ewmgoe = "$devdir/git/ew-mythtv-gentoo";
 
 my $db = EW::DBI->new('mysql', 'vs01:mythconverg', 'mythtv', 'mythtv') or die "Can't open DB";
 
-dbg("time: $ct/$epoch/$t", DBGVERBOSE);
-
-my %branches = ('master' => { 'ver' => '99999', 'dbv' => 1, 'arch' => '~'}
-                , 'fixes/0.24' => { 'ver' => '0.24.0', 'dbv' => 0, 'arch' => ''}
+my %branches = ('master' => { 'ver' => '99999.', 'dbv' => 1, 'arch' => '~'}
+                , 'fixes/0.24' => { 'ver' => '', 'dbv' => 0, 'arch' => ''}
                );
 
 my %packages = ('0' => { 'pkg' => 'mythtv'
@@ -69,67 +59,50 @@ my %packages = ('0' => { 'pkg' => 'mythtv'
 #                            , 'ewmgoe' => "$ewmgoe/media-plugins/jya-mythplugins" }
                );
 
-foreach my $br (keys %branches) {
-  my $bb = $branches{$br};
-  PKG: foreach my $j (sort { $a <=> $b } keys %packages) {
-    my $p = $packages{$j};
-    my $pkg = $p->{'pkg'};
-    my $pgrep = $p->{'pgrep'};
-    my $pewmgoe = $p->{'ewmgoe'};
+# iterate packages
+PKG: foreach my $j (sort { $a <=> $b } keys %packages) {
+  my $p = $packages{$j};
+  my $pkg = $p->{'pkg'};
+  my $pgrep = $p->{'pgrep'};
+  my $pewmgoe = $p->{'ewmgoe'};
 
-    # get latest hash to target time
-    my ($hashepoch, $hash) = gethash($pkg, $pgrep, $br, $epoch, $pewmgoe);
-    next unless $hash;
-    my $hashtime = EW::Time->new($hashepoch);
-    my $ht = $hashtime->tostring("%Y%m%d.%H%M%S");
-    dbg("At $epoch: $pkg/$br -> $hash ($hashepoch/$ht)");
+  # iterate branches
+ BRCH: foreach my $br (keys %branches) {
+    my $bb = $branches{$br};
+    my $arch = $bb->{'arch'};
+    my $bbver = $bb->{'ver'};
 
-    # get schema version if dbv specified
-    my $schemaver = getschemaver($br, $hashepoch);
-
-    # construct ebuild filename
-    my $bn = "$pkg-$bb->{'ver'}"
-      . ($bb->{'dbv'} ? ".${schemaver}" : '')
-        . ".$ht";
-    my $fname = "$p->{'ewmgoe'}/${bn}.ebuild";
-
-    # chdir to our ebuild directory for this package
-    chdir($p->{'ewmgoe'});
-
-    # create ebuild if not exist or forced
-    my $created = 0;
-    if ($forcewrite || ! -e $fname) {
-      my $lines = ebuildcontent($pkg, $br, $hash, $bb->{'arch'});
-      EW::File::writelines($fname, $lines);
-      dbg("Written: ${bn}.ebuild");
-      $created = 1;
-    } else {
-      dbg("Exists: ${bn}.ebuild");
-    }
-
-    # touch up the branch's "bleeding 9s" ebuild if different or forced
-    my $bfname = "$p->{'ewmgoe'}/$pkg-$bb->{'ver'}.99999999.ebuild";
-    my $oldlines = (-e $bfname ? EW::File::readlines($bfname) : []);
-    my $lines = ebuildcontent($pkg, $br, '', '~');
-    if ($forcewrite || !EW::Collection::equiv($oldlines, $lines)) {
-      EW::File::writelines($bfname, $lines);
-      dbg("Written: $bfname");
-    }
-
-    # test new ebuild for good fetch
-    if ($created && !$ebuildsonly) {
-      EW::Sys::do("sudo ebuild $fname clean", $gitloglevel, $gitloglevel);
-      my ($ro, $re) = EW::Sys::do("sudo ebuild $fname prepare", $gitloglevel, $gitloglevel);
-      EW::Sys::do("sudo ebuild $fname clean", $gitloglevel, $gitloglevel);
-      if (grep(/Source prepared./, @$ro)) {
-        dbg("Good prepare cycle.");
-      } else {
-        dbg("WARNING: PREPARE FAILED: $bn\n +++ "
-            . join("\n +++ ", grep(/\bdie\b/, @$ro))
-            , DBGWARN);
+    # iterate commits
+    my $sth = $db->qstart(qq{
+      select id, epoch, tag, seq, hash
+      from gitscan
+      where pkg = ?
+      and branch = ?
+      order by epoch desc
+      limit 10
+    }, $pkg, $br);
+    while (my $r = $db->qnext($sth)) {
+      my ($id, $epoch, $tag, $seq, $hash) = map { $r->{$_} } ('id', 'epoch', 'tag', 'seq', 'hash');
+      my ($ver, $superminor);
+      if ($tag) {
+        ($ver, $superminor) = ($tag =~ /.*?(\d+\.\d+(\.\d+)?).*?/);
+        $superminor = '.0' unless $superminor;
       }
+      if (!$ver) {
+        ($ver, $superminor) = ($br =~ /.*?(\d+\.\d+(\.\d+)?).*?/);
+        $superminor = '.0' unless $superminor;
+      }
+      if (!$ver) {
+        $ver = '99999';
+        $superminor = '';
+      }
+      if ($seq) {
+        writecontent($pewmgoe, $pkg, $br, "${bbver}${ver}${superminor}.${seq}", $hash, $arch);
+      }
+      writecontent($pewmgoe, $pkg, $br, "${bbver}${ver}${superminor}.99999", '', '~');
     }
   }
+  writecontent($pewmgoe, $pkg, 'master', "99999.99999", '', '~');
 }
 
 foreach my $i (keys %packages) {
@@ -137,54 +110,15 @@ foreach my $i (keys %packages) {
   mkmanifest($p->{'pkg'}, $p->{'ewmgoe'});
 }
 
-sub gethash {
-  my ($pkg, $pgrep, $br, $epoch, $pewmgoe) = @_;
-  dbg("Searching for $pkg/$br/$ct", DBGVERBOSE);
-  my ($hashepoch, $hash) = @{$db->getrow(qq{
-      select epoch, hash
-      from gitscan
-      where pkg = ?
-        and branch = ?
-        and epoch <= ?
-      order by epoch desc
-      limit 1
-    }, $pgrep, ('nuvexport' ne $pkg ? $br : 'master'), $epoch)};
-  if (!$hash) {
-    dbg("Can't obtain hash for $pkg/$br/$epoch");
-    return '';
+sub writecontent {
+  my ($pewmgoe, $pkg, $br, $ver, $hash, $arch) = @_;
+  my $bn = "${pkg}-${ver}.ebuild";
+  my $f = "$pewmgoe/$bn";
+  if (! -e $f) {
+    my $lines = ebuildcontent($pkg, $br, $hash, $arch);
+    EW::File::writelines($f, $lines);
+    dbg("Written: $bn");
   }
-
-  # see if that hash is used by an ebuild already
-  my $glob = "$pewmgoe/*.ebuild";
-  my @globfiles = glob($glob);
-  foreach my $i (@globfiles) {
-    next if $i =~ /$ct/;
-    my $lines = EW::File::readlines($i);
-    my @lhs = grep(/$hash/, @$lines);
-    if (scalar(@lhs)) {
-      dbg("Skipping $pkg-$br-$ct: Hash already used in " . basename($i));
-      return '';
-    }
-  }
-  return ($hashepoch, $hash);
-}
-
-sub getschemaver {
-  my ($br, $hashepoch) = @_;
-  return '' unless $branches{$br}{'dbv'};
-  $schemaver = $db->getval(qq{
-      select max(dbschemaver)
-      from gitscan
-      where pkg = 'mythtv'
-        and branch = ?
-        and epoch <= ?
-    }, $br, $hashepoch);
-  if (!$schemaver) {
-    dbg("Can't get schema version for $br at $hashepoch");
-    return '';
-  }
-  dbg("Schema level on branch $br at $hashepoch: $schemaver");
-  return $schemaver;
 }
 
 sub mkmanifest {
@@ -202,7 +136,7 @@ sub mkmanifest {
   }
   return unless $fname;
   chdir($pewmgoe);
-  my ($pi, $pe) = EW::Sys::do("ebuild $pewmgoe/*.0.24.0.ebuild digest");
+  my ($pi, $pe) = EW::Sys::do("ebuild $fname digest");
   dbg("Manifest for $pkg updated.");
 }
 

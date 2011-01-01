@@ -8,6 +8,7 @@ use EW::File;
 use EW::Sys;
 use EW::Time;
 use File::Copy ('cp', 'mv');
+use Term::ProgressBar;
 
 EW::Time::p('TZ' => 'UTC');
 $ENV{'TZ'} = 'UTC';
@@ -19,16 +20,12 @@ my $mythdir = "$devdir/mythtv/src/git";
 my $ewmgoe = "$devdir/git/ew-mythtv-gentoo";
 my $dbfile = "$ewmgoe/hashdb.txt";
 
-my $pkgs = { 'mythtv' => { 'repo' => 'mythtv' }
-             , 'mythplugins' => { 'repo' => 'mythtv' }
-             , 'mythweb' => { 'repo' => 'mythweb' }
-             , 'myththemes' => { 'repo' => 'myththemes' }
-             , 'nuvexport' => { 'repo' => 'nuvexport' } };
-
 my $repos = { 'mythtv' => { 'cat' => 'media-tv', 'pkgs' => ['mythtv', 'mythplugins'] }
               , 'mythweb' => { 'cat' => 'www-apps', 'pkgs' => ['mythweb'] }
               , 'myththemes' => { 'cat' => 'x11-themes', 'pkgs' => ['myththemes'] }
-              , 'nuvexport' => { 'cat' => 'media-video', 'pkgs' => ['nuvexport'] } };
+              , 'nuvexport' => { 'cat' => 'media-video', 'pkgs' => ['nuvexport'] }
+              # ,  'jya-mythtv' => { 'cat' => 'media-tv', 'pkgs' => ['jya-mythtv', 'jya-mythplugins'] }
+            };
 
 my $branches = { 'master' => { }
                  , 'fixes/0.24' => { } };
@@ -59,47 +56,65 @@ foreach my $repo (keys %$repos) {
   # pull
   foreach my $branch (keys %$branches) {
     dbg("Checking out $repo:$branch");
-    EW::Sys::do("git checkout $branch");
+    EW::Sys::do("git checkout $branch", $gitloglevel, $gitloglevel);
     dbg("Pulling $repo:$branch");
-    EW::Sys::do('git pull');
+    EW::Sys::do('git pull', $gitloglevel, $gitloglevel);
 
     foreach my $pkg (@{$repos->{$repo}{'pkgs'}}) {
 
       # dump
       dbg("Dumping $pkg:$branch");
-      my ($lines, $pe) = EW::Sys::do("git log --pretty=\"format:$repo,$branch,\%ct,\%H\"");
+      my ($lines, $pe) = EW::Sys::do("git log --pretty=\"format:$repo,$branch,\%ct,\%H\"", $gitloglevel, $gitloglevel);
       if (scalar(@$pe)) {
         dbg("Error dumping: $pkg:$branch");
         next;
       }
 
       # insert
-      dbg("Inserting log: $pkg:$branch");
-      my ($m, $n) = (0, 0);
+      dbg("Considering inserts for $pkg:$branch");
+      my $count = 0;
+      my $nextupdate = 0;
+      my $max = scalar(@$lines);
+      my $progress = Term::ProgressBar->new ({ 'name'  => "${pkg}-${branch}"
+                                               , 'count' => $max
+                                               , 'ETA'   => 'linear' });
+      $progress->max_update_rate(1);
+      $progress->minor(0);
       foreach my $line (@$lines) {
-        $m++;
         my (undef, undef, $t, $h) = split(',', $line);
-        my $id = $db->getval(qq{
-          select id from gitscan
+        my ($id, $dbtag, $dbseq) = @{$db->getrow(qq{
+          select id,tag,seq from gitscan
           where pkg = ?
           and branch = ?
           and hash = ?
-        }, $pkg, $branch, $h);
+        }, $pkg, $branch, $h)};
         if (!$id) {
+          my ($do, $de) = EW::Sys::do("git describe $h", $gitloglevel, $gitloglevel);
+          my ($tag, $seq, $ish);
+          if (scalar(@$do)) {
+            my $descline = $do->[0];
+            ($tag, $seq, $ish) = split('-', $descline);
+            die "hash $h doesn't begin with ish $ish" unless !$ish || "g$h" =~ /^$ish/;
+          }
           my $dbsv = ('mythtv' eq $pkg ? $schemavers{$branch}{$t} : undef);
-          dbg("Inserting: $pkg:$branch:$t:$h");
+          my $ptag = $tag || '';
+          my $pseq = $seq || '';
+          dbg("Inserting: $pkg:$branch:$t:$h:$ptag:$pseq");
           $db->dosql(qq{
             replace into gitscan set
               pkg = ?
               , branch = ?
               , epoch = ?
               , hash = ?
-              , dbschemaver = ? }
-                     , $pkg, $branch, $t, $h, $dbsv);
-          $n++;
+              , dbschemaver = ?
+              , tag = ?
+              , seq = ?
+            }, $pkg, $branch, $t, $h, $dbsv, $tag, $seq);
         }
+        $count++;
+        $nextupdate = $progress->update($count) if ($count >= $nextupdate);
       }
-      dbg("Inserted for $pkg:$branch: $n records");
+      $progress->update($max);
     }
   }
 }
