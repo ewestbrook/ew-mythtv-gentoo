@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-use lib '/home/eric/dev/perl/EW/lib';
+use lib '/ds2/home/eric/dev/perl/EW/lib';
 
 use EW::DBI;
 use EW::Debug;
@@ -114,7 +114,8 @@ foreach my $repo (keys %$repos) {
         $count++;
         $nextupdate = $progress->update($count) if ($count >= $nextupdate);
       }
-      $progress->update($max);
+      dbg("count = $count, cnextupdate = $nextupdate, max = $max");
+      $progress->update($max) if $nextupdate < $max;
     }
   }
 }

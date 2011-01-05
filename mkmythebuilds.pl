@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-use lib '/home/eric/dev/perl/EW/lib';
+use lib '/ds2/home/eric/dev/perl/EW/lib';
 
 use File::Basename;
 use EW::DBI;
