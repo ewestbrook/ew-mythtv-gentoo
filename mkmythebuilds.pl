@@ -19,7 +19,7 @@ my $ewmgoe = "$devdir/git/ew-mythtv-gentoo";
 
 my $db = EW::DBI->new('mysql', 'vs01:mythconverg', 'mythtv', 'mythtv') or die "Can't open DB";
 
-my %branches = ('master' => { 'ver' => '99999.', 'dbv' => 1, 'arch' => '~'}
+my %branches = ('master' => { 'ver' => '99999', 'dbv' => 1, 'arch' => '~'}
                 , 'fixes/0.24' => { 'ver' => '', 'dbv' => 0, 'arch' => ''}
                );
 
@@ -93,13 +93,25 @@ PKG: foreach my $j (sort { $a <=> $b } keys %packages) {
         $superminor = '.0' unless $superminor;
       }
       if (!$ver) {
-        $ver = '99999';
+        $ver = '';
         $superminor = '';
       }
       if ($seq) {
-        writecontent($pewmgoe, $pkg, $br, "${bbver}${ver}${superminor}.${seq}", $hash, $arch);
+        $seq = ".$seq";
+      } else {
+        $seq = '.' . $db->getval(qq{
+          select count(*)
+          from gitscan
+          where pkg = ?
+            and branch = ?
+            and epoch < ?
+        }, $pkg, $br, $epoch);
       }
-      writecontent($pewmgoe, $pkg, $br, "${bbver}${ver}${superminor}.99999", '', '~');
+      my $b2ver = ($bbver
+                   ? ($ver ? "${bbver}.${ver}" : $bbver)
+                   : ($ver ? $ver : '99999'));
+      writecontent($pewmgoe, $pkg, $br, "${b2ver}${superminor}${seq}", $hash, $arch);
+      writecontent($pewmgoe, $pkg, $br, "${b2ver}${superminor}.99999", '', '~');
     }
   }
   writecontent($pewmgoe, $pkg, 'master', "99999.99999", '', '~');
