@@ -1,0 +1,45 @@
+#!/sbin/runscript
+# Copyright 1999-2010 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: $
+
+depend() {
+  need net
+  use mysql lircd
+}
+
+start() {
+  [ -z "$MYTHTV_VERBOSE" ] && MYTHTV_VERBOSE="important,general"
+  [ -z "$MYTHTV_LOGFILE" ] && MYTHTV_LOGFILE="/var/log/mythtv/mythfrontend.log"
+  [ -z "$MYTHTV_PIDFILE" ] && MYTHTV_PIDFILE="/var/run/mythfrontend.pid"
+  [ -z "$MYTHTV_HOME"    ] && MYTHTV_HOME="/etc/mythtv"
+  [ -z "$MYTHTV_USER"    ] && MYTHTV_USER="mythtv"
+
+  HOME="${MYTH_HOME}"
+
+  #fixes for bug #101308
+  unset DISPLAY
+  unset SESSION_MANAGER
+
+  touch "$MYTHTV_LOGFILE"
+  chown "$MYTHTV_USER" "$MYTHTV_LOGFILE"
+
+  ebegin "Starting MythTV Frontend"
+  start-stop-daemon --start --quiet \
+      --exec /usr/bin/mythfrontend \
+      --make-pidfile \
+      --pidfile "$MYTHTV_PIDFILE" \
+      --background \
+      -- \
+      --verbose "$MYTH_VERBOSE" \
+      --user "$MYTHTV_USER" \
+      "$MYTH_EXTRAOPTS" \
+      --logfile "$MYTHTV_LOGFILE"
+  eend $?
+}
+
+stop () {
+  ebegin "Stopping MythTV Frontend"
+  start-stop-daemon --stop --quiet --pidfile="$MYTHTV_PIDFILE"
+  eend $?
+}
