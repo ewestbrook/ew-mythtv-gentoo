@@ -1,41 +1,45 @@
 #!/sbin/runscript
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/media-tv/mythtv/files/mythbackend-0.18.2.rc,v 1.8 2007/06/12 15:49:37 cardoe Exp $
+# $Header: $
 
 depend() {
-	# future note for me, backend doesn't have to run on
-	# same machine as MySQL so should be use
-	need net
-	use mysql lircd LCDd
+  need net
+  use mysql lircd
 }
 
 start() {
-	[ -z "${MYTH_VERBOSE}" ] && MYTH_VERBOSE="important,general"
+  [ -z "$MYTHTV_VERBOSE" ] && MYTHTV_VERBOSE="important,general"
+  [ -z "$MYTHTV_LOGFILE" ] && MYTHTV_LOGFILE="/var/log/mythtv/mythbackend.log"
+  [ -z "$MYTHTV_PIDFILE" ] && MYTHTV_PIDFILE="/var/run/mythbackend.pid"
+  [ -z "$MYTHTV_HOME"    ] && MYTHTV_HOME="/etc/mythtv"
+  [ -z "$MYTHTV_USER"    ] && MYTHTV_USER="mythtv"
 
-	export QTDIR=/usr/qt/3
-	export HOME=/etc/mythtv
-		
-	#fixes for bug #101308
-	unset DISPLAY
-	unset SESSION_MANAGER
+  HOME="${MYTH_HOME}"
 
-	# Work around any strange permissions that may be on these files.
-	chown -R mythtv /var/log/mythtv/
-	chown -R mythtv /etc/mythtv/
-	rm -rf /etc/mythtv/.qt
+  #fixes for bug #101308
+  unset DISPLAY
+  unset SESSION_MANAGER
 
-	ebegin "Starting MythTV Backend"
-	start-stop-daemon --start --quiet --chuid mythtv \
-		--exec /usr/bin/mythbackend \
-		--make-pidfile --pidfile /var/run/mythbackend.pid \
-		--background -- --verbose ${MYTH_VERBOSE} ${MYTH_EXTRAOPTS} \
-		--logfile /var/log/mythtv/mythbackend.log
-	eend $?
+  touch "$MYTHTV_LOGFILE"
+  chown "$MYTHTV_USER" "$MYTHTV_LOGFILE"
+
+  ebegin "Starting MythTV Backend"
+  start-stop-daemon --start --quiet \
+      --exec /usr/bin/mythbackend \
+      --make-pidfile \
+      --pidfile "$MYTHTV_PIDFILE" \
+      --background \
+      -- \
+      --verbose "$MYTH_VERBOSE" \
+      --user "$MYTHTV_USER" \
+      "$MYTH_EXTRAOPTS" \
+      --logfile "$MYTHTV_LOGFILE"
+  eend $?
 }
 
 stop () {
-	ebegin "Stopping MythTV Backend"
-	start-stop-daemon --stop --quiet --pidfile=/var/run/mythbackend.pid
-	eend $?
+  ebegin "Stopping MythTV Backend"
+  start-stop-daemon --stop --quiet --pidfile="$MYTHTV_PIDFILE"
+  eend $?
 }

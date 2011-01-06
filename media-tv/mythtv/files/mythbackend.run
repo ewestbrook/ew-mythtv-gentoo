@@ -1,5 +1,12 @@
 #!/bin/bash
+
 source /etc/conf.d/mythbackend
-[ -z "${MYTH_VERBOSE}" ] && MYTH_VERBOSE="important,general"
-[ -z "${MYTH_LOGFILE}" ] && MYTH_LOGFILE="/var/log/mythtv/mythbackend.log"
-exec setuidgid mythtv /usr/bin/mythbackend --verbose ${MYTH_VERBOSE} ${MYTH_EXTRAOPTS} --logfile /var/log/mythtv/mythbackend.log
+
+[ -z "$MYTHTV_VERBOSE" ] && MYTHTV_VERBOSE="important,general"
+[ -z "$MYTHTV_LOGFILE" ] && MYTHTV_LOGFILE="/var/log/mythtv/mythbackend.log"
+[ -z "$MYTHTV_HOME"    ] && MYTHTV_HOME="/etc/mythtv"
+[ -z "$MYTHTV_USER"    ] && MYTHTV_USER="mythtv"
+
+HOME="$MYTHTV_HOME"
+
+exec /usr/bin/mythbackend --verbose "$MYTHTV_VERBOSE" --user "$MYTHTV_USER" "$MYTHTV_EXTRAOPTS" --logfile "$MYTHTV_LOGFILE"

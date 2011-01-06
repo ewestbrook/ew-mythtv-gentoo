@@ -128,8 +128,8 @@ src_configure() {
 	use debug && ct="debug" || ct="release"
 	myconf="${myconf} --compile-type=${ct}"
 
-	hasq distcc ${FEATURES} || myconf="${myconf} --disable-distcc"
-	hasq ccache ${FEATURES} || myconf="${myconf} --disable-ccache"
+	hasq distcc "${FEATURES}" || myconf="${myconf} --disable-distcc"
+	hasq ccache "${FEATURES}" || myconf="${myconf} --disable-ccache"
 
 	einfo "Running ./configure ${myconf}"
 	sh ./configure ${myconf} || die "configure died"
@@ -143,13 +143,17 @@ src_install() {
 	einfo installing to INSTALL_ROOT: "${D}"
 	make INSTALL_ROOT="${D}" install || die "install failed"
 	dodoc AUTHORS FAQ UPGRADING README
-	newinitd "${FILESDIR}"/mythbackend.rc mythbackend
-	newconfd "${FILESDIR}"/mythbackend.conf mythbackend
 	dodir /var/log/mythtv
 	fowners mythtv:mythtv /var/log/mythtv
-	dodir /var/service/mythbackend
-	exeinto /var/service/mythbackend
-	newexe "${FILESDIR}"/mythbackend.run run
+	for i in mythbackend mythfrontend ; do
+		touch "${D}/var/log/mythtv/${i}.log"
+		fowners mythtv:mythtv "/var/log/mythtv/${i}.log"
+		newinitd "${FILESDIR}/${i}.rc" ${i}
+		newconfd "${FILESDIR}/${i}.conf" ${i}
+		dodir "/var/service/${i}"
+		exeinto "/var/service/${i}"
+		newexe "${FILESDIR}/${i}.run" run
+	done
 }
 
 pkg_postinst() {
