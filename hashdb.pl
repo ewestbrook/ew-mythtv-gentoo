@@ -64,7 +64,9 @@ foreach my $repo (keys %$repos) {
 
       # dump
       dbg("Dumping $pkg:$branch");
-      my ($lines, $pe) = EW::Sys::do("git log --pretty=\"format:$repo,$branch,\%ct,\%H\"", $gitloglevel, $gitloglevel);
+      my ($lines, $pe) = EW::Sys::do("git log --pretty=\"format:$repo,$branch,\%ct,\%H\""
+                                     , $gitloglevel
+                                     , $gitloglevel);
       if (scalar(@$pe)) {
         dbg("Error dumping: $pkg:$branch");
         next;
@@ -82,11 +84,12 @@ foreach my $repo (keys %$repos) {
       $progress->minor(0);
       foreach my $line (@$lines) {
         my (undef, undef, $t, $h) = split(',', $line);
-        my ($id, $dbtag, $dbseq) = @{$db->getrow(qq{
-          select id,tag,seq from gitscan
-          where pkg = ?
-          and branch = ?
-          and hash = ?
+        my ($id, $dbtag, $dbseq, $rootseq) = @{$db->getrow(qq{
+          select gs1.id, gs1.tag, gs1.seq, gs1.rootseq
+          from gitscan gs1
+          where gs1.pkg = ?
+          and gs1.branch = ?
+          and gs1.hash = ?
         }, $pkg, $branch, $h)};
         if (!$id) {
           my ($do, $de) = EW::Sys::do("git describe $h", $gitloglevel, $gitloglevel);
@@ -97,9 +100,6 @@ foreach my $repo (keys %$repos) {
             die "hash $h doesn't begin with ish $ish" unless !$ish || "g$h" =~ /^$ish/;
           }
           my $dbsv = ('mythtv' eq $pkg ? $schemavers{$branch}{$t} : undef);
-          my $ptag = $tag || '';
-          my $pseq = $seq || '';
-          dbg("Inserting: $pkg:$branch:$t:$h:$ptag:$pseq");
           $db->dosql(qq{
             replace into gitscan set
               pkg = ?
@@ -114,8 +114,37 @@ foreach my $repo (keys %$repos) {
         $count++;
         $nextupdate = $progress->update($count) if ($count >= $nextupdate);
       }
-      dbg("count = $count, cnextupdate = $nextupdate, max = $max");
       $progress->update($max) if $nextupdate < $max;
     }
   }
 }
+
+dbg("Updating null seq values.");
+my %counts = ();
+my $count = 0;
+my $nextupdate = 0;
+my $max = $db->getval('select count(id) from gitscan');
+my $progress = Term::ProgressBar->new ({ 'name'  => "SeqScan"
+                                         , 'count' => $max
+                                         , 'ETA'   => 'linear' });
+my $sth = $db->qstart(qq{
+  select id, pkg, branch, tag, seq, rootseq, hash
+  from gitscan
+  order by epoch
+});
+while (my $r = $db->qnext($sth)) {
+  my $rootseq = $counts{$r->{'pkg'}}{$r->{'branch'}} || 0;
+  if (defined $r->{'rootseq'}) {
+    if ($r->{'rootseq'} != $rootseq) {
+      die "Bad row rootseq $r->{'rootseq'} for calc rootseq $rootseq";
+    }
+  } else {
+    $db->dosql('update gitscan set rootseq = ? where id = ?', $rootseq, $r->{'id'});
+  }
+  $counts{$r->{'pkg'}}{$r->{'branch'}} = $rootseq + 1;
+  $count++;
+  $nextupdate = $progress->update($count) if ($count >= $nextupdate);
+}
+$progress->update($max) if $nextupdate < $max;
+
+dbg("Done.");
