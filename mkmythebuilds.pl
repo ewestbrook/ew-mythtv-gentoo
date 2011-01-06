@@ -36,17 +36,20 @@ my %packages = ('0' => { 'pkg' => 'mythtv'
                 , '2' => { 'pkg' => 'mythweb'
                            , 'pgrep' => 'mythweb'
                            , 'mythdir' => "$mythdir/mythweb"
-                           , 'ewmgoe' => "$ewmgoe/www-apps/mythweb" }
+                           , 'ewmgoe' => "$ewmgoe/www-apps/mythweb"
+                           , 'rootseq' => 1 }
 
                 , '3' => { 'pkg' => 'myththemes'
                            , 'pgrep' => 'myththemes'
                            , 'mythdir' => "$mythdir/myththemes"
-                           , 'ewmgoe' => "$ewmgoe/x11-themes/myththemes" }
+                           , 'ewmgoe' => "$ewmgoe/x11-themes/myththemes"
+                           , 'rootseq' => 1 }
 
                 , '4' => { 'pkg' => 'nuvexport'
                            , 'pgrep' => 'nuvexport'
                            , 'mythdir' => "$mythdir/nuvexport"
-                           , 'ewmgoe' => "$ewmgoe/media-video/nuvexport" }
+                           , 'ewmgoe' => "$ewmgoe/media-video/nuvexport"
+                           , 'rootseq' => 1 }
 
 #                 , '5' => { 'pkg' => 'jya-mythtv'
 #                            , 'pgrep' => 'jya-mythtv'
@@ -74,7 +77,7 @@ PKG: foreach my $j (sort { $a <=> $b } keys %packages) {
 
     # iterate commits
     my $sth = $db->qstart(qq{
-      select id, epoch, tag, seq, hash
+      select id, epoch, tag, seq, hash, rootseq
       from gitscan
       where pkg = ?
       and branch = ?
@@ -82,7 +85,8 @@ PKG: foreach my $j (sort { $a <=> $b } keys %packages) {
       limit 10
     }, $pkg, $br);
     while (my $r = $db->qnext($sth)) {
-      my ($id, $epoch, $tag, $seq, $hash) = map { $r->{$_} } ('id', 'epoch', 'tag', 'seq', 'hash');
+      my ($id, $epoch, $tag, $seq, $hash, $rootseq) = map { $r->{$_} } ('id', 'epoch', 'tag', 'seq', 'hash', 'rootseq');
+      $seq = $rootseq if !$seq && $p->{'rootseq'};
       my ($ver, $superminor);
       if ($tag) {
         ($ver, $superminor) = ($tag =~ /.*?(\d+\.\d+(\.\d+)?).*?/);
@@ -96,31 +100,24 @@ PKG: foreach my $j (sort { $a <=> $b } keys %packages) {
         $ver = '';
         $superminor = '';
       }
-      if ($seq) {
-        $seq = ".$seq";
-      } else {
-        $seq = '.' . $db->getval(qq{
-          select count(*)
-          from gitscan
-          where pkg = ?
-            and branch = ?
-            and epoch < ?
-        }, $pkg, $br, $epoch);
-      }
+      next unless $seq;
+      $seq = ".$seq";
       my $b2ver = ($bbver
                    ? ($ver ? "${bbver}.${ver}" : $bbver)
                    : ($ver ? $ver : '99999'));
       writecontent($pewmgoe, $pkg, $br, "${b2ver}${superminor}${seq}", $hash, $arch);
-      writecontent($pewmgoe, $pkg, $br, "${b2ver}${superminor}.99999", '', '~');
     }
   }
-  writecontent($pewmgoe, $pkg, 'master', "99999.99999", '', '~');
 }
 
+dbg("Updating any necessary Manifest files.");
 foreach my $i (keys %packages) {
   my $p = $packages{$i};
   mkmanifest($p->{'pkg'}, $p->{'ewmgoe'});
 }
+
+dbg("Done.");
+exit;
 
 sub writecontent {
   my ($pewmgoe, $pkg, $br, $ver, $hash, $arch) = @_;
