@@ -2,133 +2,161 @@
 
 use lib '/ds2/home/eric/dev/perl/EW/lib';
 
-use File::Basename;
-use EW::DBI;
 use EW::Debug;
 use EW::Sys;
 use EW::Time;
-EW::Time::p('tz' => 'UTC');
+use File::Basename;
 
-my $forcewrite = 0;
-my $ebuildsonly = 1;
+EW::Time::p('TZ' => 'UTC');
+$ENV{'TZ'} = 'UTC';
+
+my $maxrevs = 10;
 my $gitloglevel = DBGVERBOSE;
-
 my $devdir = '/ds2/home/eric/dev';
 my $mythdir = "$devdir/mythtv/src/git";
 my $ewmgoe = "$devdir/git/ew-mythtv-gentoo";
 
-my $db = EW::DBI->new('mysql', 'vs01:mythconverg', 'mythtv', 'mythtv') or die "Can't open DB";
+%pkgs = ('mythtv' => { 'cat' => 'media-tv'
+                       , 'repo' => 'mythtv'
+                       , 'branches' => { 'fixes/0.24' => { 'prefix' => '', 'arch' => '' }
+                                         , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+         , 'mythplugins' => { 'cat' => 'media-plugins'
+                              , 'repo' => 'mythtv'
+                              , 'branches' => { 'fixes/0.24' => { 'prefix' => '', 'arch' => '' }
+                                                , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+         , 'mythweb' => { 'cat' => 'www-apps'
+                          , 'repo' => 'mythweb'
+                          , 'branches' => { 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
+                                            , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+         , 'myththemes' => { 'cat' => 'x11-themes'
+                             , 'repo' => 'myththemes'
+                             , 'branches' => { 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
+                                               , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+         , 'nuvexport' => { 'cat' => 'media-video'
+                             , 'repo' => 'nuvexport'
+                             , 'branches' => { 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
+                                               , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+        );
 
-my %branches = ('master' => { 'ver' => '99999', 'dbv' => 1, 'arch' => '~'}
-                , 'fixes/0.24' => { 'ver' => '', 'dbv' => 0, 'arch' => ''}
-               );
+# my $cat = 'media-tv';
+# my $pkg = 'mythtv';
+# my $br = 'fixes/0.24';
+# my $repo = 'mythtv';
+# my $arch = '';
 
-my %packages = ('0' => { 'pkg' => 'mythtv'
-                         , 'pgrep' => 'mythtv'
-                         , 'mythdir' => "$mythdir/mythtv"
-                         , 'ewmgoe' => "$ewmgoe/media-tv/mythtv" }
+foreach my $pkg (keys %pkgs) {
+  my ($cat, $repo) = map { $pkgs{$pkg}{$_} } ('cat', 'repo');
+  dbg("===== $pkg =====");
+  dbg("pkg $pkg, cat $cat, repo $repo", DBGVERBOSE);
 
-                , '1' => { 'pkg' => 'mythplugins'
-                           , 'pgrep' => 'mythtv'
-                           , 'mythdir' => "$mythdir/mythtv"
-                           , 'ewmgoe' => "$ewmgoe/media-plugins/mythplugins" }
+  chdir("$mythdir/$repo");
+  dbg("Fetching: $repo", DBGVERBOSE);
+  EW::Sys::do("git fetch", $gitloglevel, $gitloglevel);
 
-                , '2' => { 'pkg' => 'mythweb'
-                           , 'pgrep' => 'mythweb'
-                           , 'mythdir' => "$mythdir/mythweb"
-                           , 'ewmgoe' => "$ewmgoe/www-apps/mythweb"
-                           , 'rootseq' => 1 }
+  my $branches = $pkgs{$pkg}{'branches'};
+  foreach my $br (keys %$branches) {
+    my ($prefix, $arch) = map { $branches->{$br}{$_} } ('prefix', 'arch');
+    dbg("$pkg branch $br, prefix \"$prefix\", arch \"$arch\"", DBGVERBOSE);
 
-                , '3' => { 'pkg' => 'myththemes'
-                           , 'pgrep' => 'myththemes'
-                           , 'mythdir' => "$mythdir/myththemes"
-                           , 'ewmgoe' => "$ewmgoe/x11-themes/myththemes"
-                           , 'rootseq' => 1 }
+    dbg("Checkout: $repo/$br", DBGVERBOSE);
+    EW::Sys::do("git checkout $br", $gitloglevel, $gitloglevel);
 
-                , '4' => { 'pkg' => 'nuvexport'
-                           , 'pgrep' => 'nuvexport'
-                           , 'mythdir' => "$mythdir/nuvexport"
-                           , 'ewmgoe' => "$ewmgoe/media-video/nuvexport"
-                           , 'rootseq' => 1 }
+    dbg("Merge: origin/$br", DBGVERBOSE);
+    EW::Sys::do("git merge origin/$br", $gitloglevel, $gitloglevel);
 
-#                 , '5' => { 'pkg' => 'jya-mythtv'
-#                            , 'pgrep' => 'jya-mythtv'
-#                            , 'mythdir' => "$mythdir/jya-mythtv"
-#                            , 'ewmgoe' => "$ewmgoe/media-tv/jya-mythtv" }
+    dbg("$repo/$br: Scraping recent log", DBGVERBOSE);
+    my ($hashes, undef) = EW::Sys::do("git log -n$maxrevs --pretty=\"format:%H\"", $gitloglevel, $gitloglevel);
 
-#                 , '6' => { 'pkg' => 'jya-mythplugins'
-#                            , 'pgrep' => 'jya-mythtv'
-#                            , 'mythdir' => "$mythdir/jya-mythtv"
-#                            , 'ewmgoe' => "$ewmgoe/media-plugins/jya-mythplugins" }
-               );
+    dbg("$repo/$br: Describing recent commits", DBGVERBOSE);
+    my %revs = map { $_ => { 'desc' => (EW::Sys::do("git describe $_", $gitloglevel, $gitloglevel))[0][0] } } @$hashes;
 
-# iterate packages
-PKG: foreach my $j (sort { $a <=> $b } keys %packages) {
-  my $p = $packages{$j};
-  my $pkg = $p->{'pkg'};
-  my $pgrep = $p->{'pgrep'};
-  my $pewmgoe = $p->{'ewmgoe'};
+    dbg("$repo/$br: Scraping full log", DBGVERBOSE);
+    my ($allhashes, undef) = EW::Sys::do("git log --reverse --pretty=\"format:%H\"", $gitloglevel, $gitloglevel);
+    dbg("$repo/$br: Total commits: " . scalar(@$allhashes));
 
-  # iterate branches
- BRCH: foreach my $br (keys %branches) {
-    my $bb = $branches{$br};
-    my $arch = $bb->{'arch'};
-    my $bbver = $bb->{'ver'};
+    dbg("$repo/$br: Indexing full log", DBGVERBOSE);
+    my $i = 0;
+    my %baserevs = map { $_ => $i++ } @$allhashes;
 
-    # iterate commits
-    my $sth = $db->qstart(qq{
-      select id, epoch, tag, seq, hash, rootseq
-      from gitscan
-      where pkg = ?
-      and branch = ?
-      order by epoch desc
-      limit 10
-    }, $pkg, $br);
-    while (my $r = $db->qnext($sth)) {
-      my ($id, $epoch, $tag, $seq, $hash, $rootseq) = map { $r->{$_} } ('id', 'epoch', 'tag', 'seq', 'hash', 'rootseq');
-      $seq = $rootseq if !$seq && $p->{'rootseq'};
-      my ($ver, $superminor);
-      if ($tag) {
-        ($ver, $superminor) = ($tag =~ /.*?(\d+\.\d+(\.\d+)?).*?/);
-        $superminor = '.0' unless $superminor;
+    foreach my $rev (keys %revs) {
+
+      if (!$revs{$rev}{'desc'} || 'master' eq $br) {
+
+        $revs{$rev}{'major'} = '';
+        $revs{$rev}{'minor'} = '';
+        $revs{$rev}{'superminor'} = '';
+        $revs{$rev}{'seq'} = $baserevs{$rev};
+
+      } else {
+
+        ($revs{$rev}{'major'}
+         , $revs{$rev}{'minor'}
+         , $revs{$rev}{'superminor'}
+         , $revs{$rev}{'suffix'}
+         , undef
+         , $revs{$rev}{'seq'})
+          = ($revs{$rev}{'desc'} =~ /[vb](\d+)(\.\d+)(\.\d+)?(.*?)(-(\d+)-g)?/);
+
+        foreach my $i ('major', 'minor') {
+          if (!defined $revs{$rev}{$i}) {
+            die "Can't parse rev for $i: " . $revs{$rev}{'desc'};
+          }
+        }
+
+      $revs{$rev}{'superminor'} = '.0' unless $revs{$rev}{'superminor'};
+      $revs{$rev}{'seq'} = '0' unless $revs{$rev}{'seq'};
+
       }
-      if (!$ver) {
-        ($ver, $superminor) = ($br =~ /.*?(\d+\.\d+(\.\d+)?).*?/);
-        $superminor = '.0' unless $superminor;
+
+      $revs{$rev}{'suffix'} = '' unless $revs{$rev}{'suffix'};
+    }
+
+    REV: foreach my $h (keys %revs) {
+      my ($desc, $major, $minor, $superminor, $seq) = map { $revs{$h}{$_} } ('desc', 'major', 'minor', 'superminor', 'seq');
+      my $bv = "${prefix}${major}${minor}${superminor}.${seq}";
+      my $bn = "${pkg}-${bv}";
+      my $d = "${ewmgoe}/${cat}/${pkg}";
+      my $f = "${d}/${bn}.ebuild";
+      my $w = 'Writing ';
+      dbg("Consider: $bn", DBGVERBOSE);
+      if (-e $f) {
+        my $lines = EW::File::readlines($f);
+        my ($hashline) = grep(/MYTHCOMMIT/, @$lines);
+        my ($fh) = ($hashline =~ /\"(.*)\"/);
+        if ($fh ne $h) {
+          my $hi = $baserevs{$h};
+          my $fhi = $baserevs{$fh};
+          if ($hi > $fhi) {
+            $w = 'Updating';
+          } else {
+            dbg("Later OK: $bn ($hi) <= $fhi", DBGVERBOSE);
+            next REV;
+          }
+        } else {
+          dbg("Good    : $bn", DBGVERBOSE);
+          next REV;
+        }
       }
-      if (!$ver) {
-        $ver = '';
-        $superminor = '';
+      my @globbers = glob("${ewmgoe}/${cat}/${pkg}/${pkg}-${prefix}${major}*.ebuild");
+      foreach my $fq (@globbers) {
+        my $lines = EW::File::readlines($fq);
+        my ($hashline) = grep(/$h/, @$lines);
+        if ($hashline) {
+          die "Ebuild for $bn would duplicate " . basename($fq);
+        }
       }
-      next unless $seq;
-      $seq = ".$seq";
-      my $b2ver = ($bbver
-                   ? ($ver ? "${bbver}.${ver}" : $bbver)
-                   : ($ver ? $ver : '99999'));
-      writecontent($pewmgoe, $pkg, $br, "${b2ver}${superminor}${seq}", $hash, $arch);
+      dbg("${w}: ${bn}");
+      my $lines = ebuildcontent($pkg, $br, $h, $arch);
+      EW::File::writelines($f, $lines);
     }
   }
 }
 
-dbg("Updating any necessary Manifest files.");
-foreach my $i (keys %packages) {
-  my $p = $packages{$i};
-  mkmanifest($p->{'pkg'}, $p->{'ewmgoe'});
+foreach my $pkg (keys %pkgs) {
+  mkmanifest($pkg, "${ewmgoe}/$pkgs{$pkg}{'cat'}/${pkg}");
 }
 
-dbg("Done.");
 exit;
-
-sub writecontent {
-  my ($pewmgoe, $pkg, $br, $ver, $hash, $arch) = @_;
-  my $bn = "${pkg}-${ver}.ebuild";
-  my $f = "$pewmgoe/$bn";
-  if (! -e $f) {
-    my $lines = ebuildcontent($pkg, $br, $hash, $arch);
-    EW::File::writelines($f, $lines);
-    dbg("Written: $bn");
-  }
-}
 
 sub mkmanifest {
   my ($pkg, $pewmgoe) = @_;
@@ -144,9 +172,9 @@ sub mkmanifest {
     }
   }
   return unless $fname;
+  dbg("Updating Manifest: $pkg");
   chdir($pewmgoe);
   my ($pi, $pe) = EW::Sys::do("ebuild $fname digest");
-  dbg("Manifest for $pkg updated.");
 }
 
 sub ebuildcontent {
@@ -166,3 +194,4 @@ sub ebuildcontent {
   return \@lines;
 }
 
+# foreach my $line (@$lines); do d=$(git describe $i) ; q0=${d#*-} ; q=${q0%-*} ; f=~/dev/git/ew-mythtv-gentoo/media-tv/mythtv/mythtv-0.24.0.$q.ebuild ; if [ -e $f ] ; then c0=$(grep MYTHCOMMIT ~/dev/git/ew-mythtv-gentoo/media-tv/mythtv/mythtv-0.24.0.$q.ebuild) ; else c0="" ; fi ; echo "$i $d $q $c0" ; done
