@@ -13,8 +13,12 @@ use Term::ProgressBar;
 EW::Time::p('TZ' => 'UTC');
 $ENV{'TZ'} = 'UTC';
 
-my $gitloglevel = DBGVERBOSE;
+if (0) {
+  dbg("envies: \n ::: " . join("\n ::: ", map { "$_ => $ENV{$_}" } keys %ENV));
+  exit;
+}
 
+my $gitloglevel = DBGVERBOSE;
 my $devdir = '/ds2/home/eric/dev';
 my $mythdir = "$devdir/mythtv/src/git";
 my $ewmgoe = "$devdir/git/ew-mythtv-gentoo";
@@ -36,6 +40,8 @@ my %schemavers = ('master' => { 1282172207 => 1263
                   , 'fixes/0.24' => { 1287469311 => 1264 } );
 
 my $db = EW::DBI->new('mysql', 'vs01:mythconverg', 'mythtv', 'mythtv') or die "Can't open DB";
+my $doprogress = ($ENV{'TERM'} ? 1 : 0);
+my $progress;
 
 foreach my $repo (keys %$repos) {
 
@@ -49,7 +55,7 @@ foreach my $repo (keys %$repos) {
 
   # fetch
   chdir("$mythdir/$repo");
-  dbg("Now in: $mythdir/$repo");
+  dbg("Now in: $mythdir/$repo", $gitloglevel);
   dbg("Fetching: $repo");
   EW::Sys::do('git fetch');
 
@@ -77,11 +83,13 @@ foreach my $repo (keys %$repos) {
       my $count = 0;
       my $nextupdate = 0;
       my $max = scalar(@$lines);
-      my $progress = Term::ProgressBar->new ({ 'name'  => "${pkg}-${branch}"
+      $progress = ($doprogress
+                   ? Term::ProgressBar->new ({ 'name'  => "${pkg}-${branch}"
                                                , 'count' => $max
-                                               , 'ETA'   => 'linear' });
-      $progress->max_update_rate(1);
-      $progress->minor(0);
+                                               , 'ETA'   => 'linear' })
+                   : undef);
+      $progress->max_update_rate(1) if $doprogress;
+      $progress->minor(0) if $doprogress;
       foreach my $line (@$lines) {
         my (undef, undef, $t, $h) = split(',', $line);
         my ($id, $dbtag, $dbseq, $rootseq) = @{$db->getrow(qq{
@@ -112,9 +120,9 @@ foreach my $repo (keys %$repos) {
             }, $pkg, $branch, $t, $h, $dbsv, $tag, $seq);
         }
         $count++;
-        $nextupdate = $progress->update($count) if ($count >= $nextupdate);
+        $nextupdate = $progress->update($count) if $doprogress && ($count >= $nextupdate);
       }
-      $progress->update($max) if $nextupdate < $max;
+      $progress->update($max) if $doprogress && $nextupdate < $max;
     }
   }
 }
@@ -124,9 +132,11 @@ my %counts = ();
 my $count = 0;
 my $nextupdate = 0;
 my $max = $db->getval('select count(id) from gitscan');
-my $progress = Term::ProgressBar->new ({ 'name'  => "SeqScan"
+$progress = ($doprogress
+             ? Term::ProgressBar->new ({ 'name'  => "SeqScan"
                                          , 'count' => $max
-                                         , 'ETA'   => 'linear' });
+                                         , 'ETA'   => 'linear' })
+             : undef);
 my $sth = $db->qstart(qq{
   select id, pkg, branch, tag, seq, rootseq, hash
   from gitscan
@@ -136,15 +146,16 @@ while (my $r = $db->qnext($sth)) {
   my $rootseq = $counts{$r->{'pkg'}}{$r->{'branch'}} || 0;
   if (defined $r->{'rootseq'}) {
     if ($r->{'rootseq'} != $rootseq) {
-      die "Bad row rootseq $r->{'rootseq'} for calc rootseq $rootseq";
+      die "Bad row rootseq $r->{'rootseq'} for calc rootseq $rootseq\n + "
+        . join("\n + ", map { "$_ => $r->{$_}" } keys %$r) . "\n";
     }
   } else {
     $db->dosql('update gitscan set rootseq = ? where id = ?', $rootseq, $r->{'id'});
   }
   $counts{$r->{'pkg'}}{$r->{'branch'}} = $rootseq + 1;
   $count++;
-  $nextupdate = $progress->update($count) if ($count >= $nextupdate);
+  $nextupdate = $progress->update($count) if $doprogress && ($count >= $nextupdate);
 }
-$progress->update($max) if $nextupdate < $max;
+$progress->update($max) if $doprogress && $nextupdate < $max;
 
 dbg("Done.");
