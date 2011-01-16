@@ -89,7 +89,7 @@ src_unpack() {
 	cd "${S}"
 	epatch "${FILESDIR}/${PN}-0.21-ldconfig-sanxbox-fix.patch"
 	epatch "${FILESDIR}/${PN}-ew-square-pixels.patch"
-	epatch "${FILESDIR}/${PN}-ew-nokeyframe-silence.patch"
+	epatch "${FILESDIR}/${PN}-ew-silencers.patch"
 }
 
 pkg_setup() {
