@@ -16,17 +16,17 @@ IUSE="
   debug
   exif
   mmx
-  mytharchive
-  mythbrowser
-  mythgallery
+ +mytharchive
+ +mythbrowser
+ +mythgallery
  -mythgame
-  mythmusic
-  mythnews
-  mythmusic
-  mythvideo
-  mythweather
+ +mythmusic
+ +mythnews
+ +mythmusic
+ +mythvideo
+ +mythweather
  -mythzoneminder
-  mythnetvision
+ +mythnetvision
   opengl
 "
 
