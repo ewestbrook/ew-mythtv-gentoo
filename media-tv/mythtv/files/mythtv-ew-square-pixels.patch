@@ -1,6 +1,6 @@
-diff -ru old/branches/release-0-24-fixes/mythtv/libs/libmythtv/videooutbase.cpp new/branches/release-0-24-fixes/mythtv/libs/libmythtv/videooutbase.cpp
---- old/branches/release-0-24-fixes/mythtv/libs/libmythtv/videooutbase.cpp	2010-10-10 17:33:18.000000000 -0600
-+++ new/branches/release-0-24-fixes/mythtv/libs/libmythtv/videooutbase.cpp	2010-11-03 00:52:19.000000000 -0600
+diff -ru old/mythtv/libs/libmythtv/videooutbase.cpp new/mythtv/libs/libmythtv/videooutbase.cpp
+--- old/mythtv/libs/libmythtv/videooutbase.cpp	2010-10-10 17:33:18.000000000 -0600
++++ new/mythtv/libs/libmythtv/videooutbase.cpp	2010-11-03 00:52:19.000000000 -0600
 @@ -1695,11 +1695,21 @@
      if (disp_dim.isEmpty())
      {

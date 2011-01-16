@@ -11,3 +11,18 @@ index 7240779..9225270 100644
              /* Allocate a dummy frame */
              i= ff_find_unused_picture(s, 0);
              s->last_picture_ptr= &s->picture[i];
+diff --git a/mythtv/libs/libmythtv/avformatdecoder.cpp b/mythtv/libs/libmythtv/avformatdecoder.cpp
+index 23719d1..d5904cf 100644
+--- a/mythtv/libs/libmythtv/avformatdecoder.cpp
++++ b/mythtv/libs/libmythtv/avformatdecoder.cpp
+@@ -1431,8 +1431,8 @@ void AvFormatDecoder::ScanATSCCaptionStreams(int av_index)
+     // Figure out languages of ATSC captions
+     if (!ic->cur_pmt_sect)
+     {
+-        VERBOSE(VB_IMPORTANT, LOC_WARN +
+-                "ScanATSCCaptionStreams() called with no PMT");
++      /* VERBOSE(VB_IMPORTANT, LOC_WARN +
++         "ScanATSCCaptionStreams() called with no PMT"); */
+         return;
+     }
+ 
