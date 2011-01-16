@@ -18,23 +18,28 @@ my $ewmgoe = "$devdir/git/ew-mythtv-gentoo";
 
 %pkgs = ('mythtv' => { 'cat' => 'media-tv'
                        , 'repo' => 'mythtv'
-                       , 'branches' => { 'fixes/0.24' => { 'prefix' => '', 'arch' => '' }
+                       , 'branches' => { 'fixes/0.23' => { 'prefix' => '', 'arch' => '' }
+                                         , 'fixes/0.24' => { 'prefix' => '', 'arch' => '' }
                                          , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
          , 'mythplugins' => { 'cat' => 'media-plugins'
                               , 'repo' => 'mythtv'
-                              , 'branches' => { 'fixes/0.24' => { 'prefix' => '', 'arch' => '' }
+                              , 'branches' => { 'fixes/0.23' => { 'prefix' => '', 'arch' => '' }
+                                                , 'fixes/0.24' => { 'prefix' => '', 'arch' => '' }
                                                 , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
          , 'mythweb' => { 'cat' => 'www-apps'
                           , 'repo' => 'mythweb'
-                          , 'branches' => { 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
+                          , 'branches' => { 'fixes/0.23' => { 'prefix' => '0.23.1', 'arch' => '' }
+                                            , 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
                                             , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
          , 'myththemes' => { 'cat' => 'x11-themes'
                              , 'repo' => 'myththemes'
-                             , 'branches' => { 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
+                             , 'branches' => { 'fixes/0.23' => { 'prefix' => '0.23.1', 'arch' => '' }
+                                               , 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
                                                , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
          , 'nuvexport' => { 'cat' => 'media-video'
                              , 'repo' => 'nuvexport'
-                             , 'branches' => { 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
+                             , 'branches' => { 'fixes/0.23' => { 'prefix' => '0.23.1', 'arch' => '' }
+                                               , 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
                                                , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
         );
 
@@ -57,6 +62,9 @@ foreach my $pkg (keys %pkgs) {
   foreach my $br (keys %$branches) {
     my ($prefix, $arch) = map { $branches->{$br}{$_} } ('prefix', 'arch');
     dbg("$pkg branch $br, prefix \"$prefix\", arch \"$arch\"", DBGVERBOSE);
+
+    dbg("Reset: $repo/$br", DBGVERBOSE);
+    EW::Sys::do("git reset --hard", $gitloglevel, $gitloglevel);
 
     dbg("Checkout: $repo/$br", DBGVERBOSE);
     EW::Sys::do("git checkout $br", $gitloglevel, $gitloglevel);
