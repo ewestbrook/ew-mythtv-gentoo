@@ -52,37 +52,37 @@ my $ewmgoe = "$devdir/git/ew-mythtv-gentoo";
 foreach my $pkg (keys %pkgs) {
   my ($cat, $repo) = map { $pkgs{$pkg}{$_} } ('cat', 'repo');
   dbg("===== $pkg =====");
-  dbg("pkg $pkg, cat $cat, repo $repo", DBGVERBOSE);
+  dbg("pkg $pkg, cat $cat, repo $repo", $gitloglevel);
 
   chdir("$mythdir/$repo");
-  dbg("Fetching: $repo", DBGVERBOSE);
+  dbg("Fetching: $repo", $gitloglevel);
   EW::Sys::do("git fetch", $gitloglevel, $gitloglevel);
 
   my $branches = $pkgs{$pkg}{'branches'};
   foreach my $br (keys %$branches) {
     my ($prefix, $arch) = map { $branches->{$br}{$_} } ('prefix', 'arch');
-    dbg("$pkg branch $br, prefix \"$prefix\", arch \"$arch\"", DBGVERBOSE);
+    dbg("$pkg branch $br, prefix \"$prefix\", arch \"$arch\"", $gitloglevel);
 
-    dbg("Reset: $repo/$br", DBGVERBOSE);
+    dbg("Reset: $repo/$br", $gitloglevel);
     EW::Sys::do("git reset --hard", $gitloglevel, $gitloglevel);
 
-    dbg("Checkout: $repo/$br", DBGVERBOSE);
+    dbg("Checkout: $repo/$br", $gitloglevel);
     EW::Sys::do("git checkout $br", $gitloglevel, $gitloglevel);
 
-    dbg("Merge: origin/$br", DBGVERBOSE);
+    dbg("Merge: origin/$br", $gitloglevel);
     EW::Sys::do("git merge origin/$br", $gitloglevel, $gitloglevel);
 
-    dbg("$repo/$br: Scraping recent log", DBGVERBOSE);
+    dbg("$repo/$br: Scraping recent log", $gitloglevel);
     my ($hashes, undef) = EW::Sys::do("git log -n$maxrevs --pretty=\"format:%H\"", $gitloglevel, $gitloglevel);
 
-    dbg("$repo/$br: Describing recent commits", DBGVERBOSE);
+    dbg("$repo/$br: Describing recent commits", $gitloglevel);
     my %revs = map { $_ => { 'desc' => (EW::Sys::do("git describe $_", $gitloglevel, $gitloglevel))[0][0] } } @$hashes;
 
-    dbg("$repo/$br: Scraping full log", DBGVERBOSE);
+    dbg("$repo/$br: Scraping full log", $gitloglevel);
     my ($allhashes, undef) = EW::Sys::do("git log --reverse --pretty=\"format:%H\"", $gitloglevel, $gitloglevel);
     dbg("$repo/$br: Total commits: " . scalar(@$allhashes));
 
-    dbg("$repo/$br: Indexing full log", DBGVERBOSE);
+    dbg("$repo/$br: Indexing full log", $gitloglevel);
     my $i = 0;
     my %baserevs = map { $_ => $i++ } @$allhashes;
 
@@ -126,7 +126,7 @@ foreach my $pkg (keys %pkgs) {
       my $d = "${ewmgoe}/${cat}/${pkg}";
       my $f = "${d}/${bn}.ebuild";
       my $w = 'Writing ';
-      dbg("Consider: $bn", DBGVERBOSE);
+      dbg("Consider: $bn", $gitloglevel);
       if (-e $f) {
         my $lines = EW::File::readlines($f);
         my ($hashline) = grep(/MYTHCOMMIT/, @$lines);
@@ -137,11 +137,11 @@ foreach my $pkg (keys %pkgs) {
           if ($hi > $fhi) {
             $w = 'Updating';
           } else {
-            dbg("Later OK: $bn ($hi) <= $fhi", DBGVERBOSE);
+            dbg("Later OK: $bn ($hi) <= $fhi", $gitloglevel);
             next REV;
           }
         } else {
-          dbg("Good    : $bn", DBGVERBOSE);
+          dbg("Good    : $bn", $gitloglevel);
           next REV;
         }
       }
