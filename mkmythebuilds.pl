@@ -165,24 +165,22 @@ foreach my $pkg (keys %pkgs) {
       dbg("${w}: ${bn}");
       my $lines = ebuildcontent($pkg, $br, $h, $arch);
       EW::File::writelines($f, $lines);
-      push @resultfiles, $f;
+      push @resultfiles, "$pkgs{$pkg}{'cat'}/${pkg}/${bn}.ebuild";
     }
   }
 }
 
 foreach my $pkg (keys %pkgs) {
-  my $d = "${ewmgoe}/$pkgs{$pkg}{'cat'}/${pkg}";
+  my $d = "$pkgs{$pkg}{'cat'}/${pkg}";
   if (mkmanifest($pkg, $d)) {
     push @resultfiles, "$d/Manifest";
   }
 }
 
 chdir($ewmgoe);
-($so, $se) = EW::Sys::do('git stash');
 ($so, $se) = EW::Sys::do('git add ' . join(' ', @resultfiles));
 ($so, $se) = EW::Sys::do("git commit -m 'upstream $nowday'");
-($so, $se) = EW::Sys::do('git push origin/master');
-($so, $se) = EW::Sys::do('git stash pop');
+($so, $se) = EW::Sys::do('git push');
 
 exit;
 
@@ -199,10 +197,11 @@ sub mkmanifest {
       last;
     }
   }
-  return unless $fname;
+  return 0 unless $fname;
   dbg("Updating Manifest: $pkg");
   chdir($pewmgoe);
   my ($pi, $pe) = EW::Sys::do("ebuild $fname digest");
+  return 1;
 }
 
 sub ebuildcontent {
