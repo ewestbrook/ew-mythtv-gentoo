@@ -3,18 +3,24 @@
 use lib '/ds2/home/eric/dev/perl/EW/lib';
 
 use EW::Debug;
+use EW::File;
 use EW::Sys;
 use EW::Time;
 use File::Basename;
 
 EW::Time::p('TZ' => 'UTC');
 $ENV{'TZ'} = 'UTC';
+my $nowday = EW::Time->now->tostring('%Y%m%d');
+
+my @resultfiles = ();
 
 my $maxrevs = 10;
 my $gitloglevel = DBGVERBOSE;
 my $devdir = '/ds2/home/eric/dev';
 my $mythdir = "$devdir/mythtv/src/git";
 my $ewmgoe = "$devdir/git/ew-mythtv-gentoo";
+
+my ($so, $se);
 
 %pkgs = ('mythtv' => { 'cat' => 'media-tv'
                        , 'repo' => 'mythtv'
@@ -56,7 +62,7 @@ foreach my $pkg (keys %pkgs) {
 
   chdir("$mythdir/$repo");
   dbg("Fetching: $repo", $gitloglevel);
-  EW::Sys::do("git fetch", $gitloglevel, $gitloglevel);
+  ($so, $se) = EW::Sys::do("git fetch", $gitloglevel, $gitloglevel);
 
   my $branches = $pkgs{$pkg}{'branches'};
   foreach my $br (keys %$branches) {
@@ -64,22 +70,25 @@ foreach my $pkg (keys %pkgs) {
     dbg("$pkg branch $br, prefix \"$prefix\", arch \"$arch\"", $gitloglevel);
 
     dbg("Reset: $repo/$br", $gitloglevel);
-    EW::Sys::do("git reset --hard", $gitloglevel, $gitloglevel);
+    ($so, $se) = EW::Sys::do("git reset --hard", $gitloglevel, $gitloglevel);
+
+    dbg("Clean: $repo/$br", $gitloglevel);
+    ($so, $se) = EW::Sys::do("git clean -fxd", $gitloglevel, $gitloglevel);
 
     dbg("Checkout: $repo/$br", $gitloglevel);
-    EW::Sys::do("git checkout $br", $gitloglevel, $gitloglevel);
+    ($so, $se) = EW::Sys::do("git checkout $br", $gitloglevel, $gitloglevel);
 
-    dbg("Merge: origin/$br", $gitloglevel);
-    EW::Sys::do("git merge origin/$br", $gitloglevel, $gitloglevel);
+    dbg("Pull: origin/$br", $gitloglevel);
+    ($so, $se) = EW::Sys::do("git pull", $gitloglevel, $gitloglevel);
 
     dbg("$repo/$br: Scraping recent log", $gitloglevel);
-    my ($hashes, undef) = EW::Sys::do("git log -n$maxrevs --pretty=\"format:%H\"", $gitloglevel, $gitloglevel);
+    my ($hashes, $se) = EW::Sys::do("git log -n$maxrevs --pretty=\"format:%H\"", $gitloglevel, $gitloglevel);
 
     dbg("$repo/$br: Describing recent commits", $gitloglevel);
     my %revs = map { $_ => { 'desc' => (EW::Sys::do("git describe $_", $gitloglevel, $gitloglevel))[0][0] } } @$hashes;
 
     dbg("$repo/$br: Scraping full log", $gitloglevel);
-    my ($allhashes, undef) = EW::Sys::do("git log --reverse --pretty=\"format:%H\"", $gitloglevel, $gitloglevel);
+    my ($allhashes, $se1) = EW::Sys::do("git log --reverse --pretty=\"format:%H\"", $gitloglevel, $gitloglevel);
     dbg("$repo/$br: Total commits: " . scalar(@$allhashes));
 
     dbg("$repo/$br: Indexing full log", $gitloglevel);
@@ -156,13 +165,24 @@ foreach my $pkg (keys %pkgs) {
       dbg("${w}: ${bn}");
       my $lines = ebuildcontent($pkg, $br, $h, $arch);
       EW::File::writelines($f, $lines);
+      push @resultfiles, $f;
     }
   }
 }
 
 foreach my $pkg (keys %pkgs) {
-  mkmanifest($pkg, "${ewmgoe}/$pkgs{$pkg}{'cat'}/${pkg}");
+  my $d = "${ewmgoe}/$pkgs{$pkg}{'cat'}/${pkg}";
+  if (mkmanifest($pkg, $d)) {
+    push @resultfiles, "$d/Manifest";
+  }
 }
+
+chdir($ewmgoe);
+($so, $se) = EW::Sys::do('git stash');
+($so, $se) = EW::Sys::do('git add ' . join(' ', @resultfiles));
+($so, $se) = EW::Sys::do("git commit -m 'upstream $nowday'");
+($so, $se) = EW::Sys::do('git push origin/master');
+($so, $se) = EW::Sys::do('git stash pop');
 
 exit;
 
