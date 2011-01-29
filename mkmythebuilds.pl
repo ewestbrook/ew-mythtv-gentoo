@@ -171,16 +171,18 @@ foreach my $pkg (keys %pkgs) {
 }
 
 foreach my $pkg (keys %pkgs) {
-  my $d = "$pkgs{$pkg}{'cat'}/${pkg}";
-  if (mkmanifest($pkg, $d)) {
-    push @resultfiles, "$d/Manifest";
+  if (mkmanifest($pkg, "$ewmgoe/$pkgs{$pkg}{'cat'}/${pkg}")) {
+    push @resultfiles, "$pkgs{$pkg}{'cat'}/${pkg}/Manifest";
   }
 }
 
-chdir($ewmgoe);
-($so, $se) = EW::Sys::do('git add ' . join(' ', @resultfiles));
-($so, $se) = EW::Sys::do("git commit -m 'upstream $nowday'");
-($so, $se) = EW::Sys::do('git push');
+if (scalar(@resultfiles)) {
+  dbg("Commiting for $nowday");
+  chdir($ewmgoe);
+  ($so, $se) = EW::Sys::do('git add ' . join(' ', @resultfiles));
+  ($so, $se) = EW::Sys::do("git commit -m 'upstream $nowday'");
+  ($so, $se) = EW::Sys::do('git push');
+}
 
 exit;
 
