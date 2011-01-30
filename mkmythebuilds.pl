@@ -177,9 +177,10 @@ foreach my $pkg (keys %pkgs) {
 }
 
 if (scalar(@resultfiles)) {
-  dbg("Commiting for $nowday");
+  dbg("Commiting for $nowday: " . scalar(@resultfiles) . " files");
   chdir($ewmgoe);
   ($so, $se) = EW::Sys::do('git add ' . join(' ', @resultfiles));
+  die "Git add error: \n" . join("\n", @$so, @$se) if scalar(@$se);
   ($so, $se) = EW::Sys::do("git commit -m 'upstream $nowday'");
   ($so, $se) = EW::Sys::do('git push');
 }
