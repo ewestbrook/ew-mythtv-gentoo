@@ -90,6 +90,7 @@ src_unpack() {
 	epatch "${FILESDIR}/${PN}-0.21-ldconfig-sanxbox-fix.patch"
 	epatch "${FILESDIR}/${PN}-ew-square-pixels.patch"
 	epatch "${FILESDIR}/${PN}-ew-silencers.patch"
+	epatch "${FILESDIR}/${PN}-ew-proxy.patch"
 }
 
 pkg_setup() {

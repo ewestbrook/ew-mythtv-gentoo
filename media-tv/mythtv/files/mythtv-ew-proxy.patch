@@ -1,0 +1,31 @@
+diff --git a/mythtv/programs/mythfrontend/main.cpp b/mythtv/programs/mythfrontend/main.cpp
+index 88c7551..5fb471f 100644
+--- a/mythtv/programs/mythfrontend/main.cpp
++++ b/mythtv/programs/mythfrontend/main.cpp
+@@ -18,6 +18,7 @@ using namespace std;
+ #include <QWidget>
+ #include <QApplication>
+ #include <QTimer>
++#include <QNetworkProxy>
+ 
+ #include "previewgeneratorqueue.h"
+ #include "mythconfig.h"
+@@ -1279,6 +1280,18 @@ int main(int argc, char **argv)
+ 
+     gCoreContext->SetAppName(binname);
+ 
++
++    // Set http proxy for the application if specified in environment variable
++    QString var(getenv("http_proxy"));
++    QRegExp regex("(http://)?(.*):(\\d*)/?");
++    int pos = regex.indexIn(var);
++    if (pos > -1) {
++      QString host = regex.cap(2);
++      int port = regex.cap(3).toInt();
++      QNetworkProxy proxy(QNetworkProxy::HttpProxy, host, port);
++      QNetworkProxy::setApplicationProxy(proxy);
++    }
++
+     for(int argpos = 1; argpos < a.argc(); ++argpos)
+     {
+         if (!strcmp(a.argv()[argpos],"-l") ||
