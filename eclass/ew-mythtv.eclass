@@ -91,6 +91,7 @@ src_unpack() {
 	epatch "${FILESDIR}/${PN}-ew-square-pixels.patch"
 	epatch "${FILESDIR}/${PN}-ew-silencers.patch"
 	epatch "${FILESDIR}/${PN}-ew-proxy.patch"
+	epatch "${FILESDIR}/${PN}_smoothsync-24fixes-p0.patch"
 }
 
 pkg_setup() {

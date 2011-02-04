@@ -1,0 +1,747 @@
+diff --git a/mythtv/libs/libmythtv/mythplayer.cpp b/mythtv/libs/libmythtv/mythplayer.cpp
+index 5b13fbc..8a4c621 100644
+--- a/mythtv/libs/libmythtv/mythplayer.cpp
++++ b/mythtv/libs/libmythtv/mythplayer.cpp
+@@ -237,6 +237,7 @@ MythPlayer::MythPlayer(bool muted)
+       // Audio and video synchronization stuff
+       videosync(NULL),              avsync_delay(0),
+       avsync_adjustment(0),         avsync_avg(0),
++      avsync_predictor(0),          avsync_predictor_enabled(false),
+       refreshrate(0),
+       lastsync(false),              repeat_delay(0),
+       // Time Code stuff
+@@ -872,7 +873,7 @@ void MythPlayer::SetVideoParams(int width, int height, double fps,
+         video_frame_rate = fps;
+         float temp_speed = (play_speed == 0.0f) ?
+             audio.GetStretchFactor() : play_speed;
+-        frame_interval = (int)(1000000.0f / video_frame_rate / temp_speed);
++        SetFrameInterval(kScan_Progressive, 1.0 / (video_frame_rate * temp_speed));
+     }
+ 
+     if (videoOutput)
+@@ -1613,6 +1614,31 @@ int MythPlayer::NextCaptionTrack(int mode)
+     return NextCaptionTrack(nextmode);
+ }
+ 
++void MythPlayer::SetFrameInterval(FrameScanType scan, double frame_period)
++{
++    frame_interval = (int)(1000000.0f * frame_period + 0.5f);
++    if (!avsync_predictor_enabled)
++        avsync_predictor = 0;
++    avsync_predictor_enabled = false;
++
++    VERBOSE(VB_PLAYBACK, LOC + QString("SetFrameInterval ps:%1 scan:%2")
++            .arg(play_speed).arg(scan)
++           );
++    if (play_speed < 1 || play_speed > 2 || refreshrate <= 0)
++        return;
++
++    avsync_predictor_enabled = ((frame_interval-(frame_interval/200)) < refreshrate);
++}
++
++void MythPlayer::ResetAVSync(void)
++{
++    avsync_avg = 0;
++    if (!avsync_predictor_enabled || avsync_predictor >= refreshrate)
++        avsync_predictor = 0;
++    prevtc = 0;
++    VERBOSE(VB_PLAYBACK+VB_TIMESTAMP, LOC + "A/V sync reset");
++}
++
+ void MythPlayer::InitAVSync(void)
+ {
+     videosync->Start();
+@@ -1636,26 +1662,42 @@ void MythPlayer::InitAVSync(void)
+                        .arg(1000000.0 / frame_interval, 0, 'f', 3);
+         VERBOSE(VB_PLAYBACK, LOC + msg);
+ 
++        SetFrameInterval(m_scan, 1.0 / (video_frame_rate * play_speed));
++
+         // try to get preferential scheduling, but ignore if we fail to.
+         myth_nice(-19);
+     }
+ }
+ 
++int64_t MythPlayer::AVSyncGetAudiotime(void)
++{
++    int64_t currentaudiotime = 0;
++    if (normal_speed)
++    {
++        currentaudiotime = audio.GetAudioTime();
++    }
++    return currentaudiotime;
++}
++
+ #define MAXDIVERGE  3.0f
+ #define DIVERGELIMIT 30.0f
+ void MythPlayer::AVSync(VideoFrame *buffer, bool limit_delay)
+ {
+     int repeat_pict  = 0;
+-    int64_t timecode = audio.GetAudioTime();
++    int64_t timecode = 0;
+ 
+     if (buffer)
+     {
+         repeat_pict = buffer->repeat_pict;
+         timecode    = buffer->timecode;
+     }
++    else
++        timecode = audio.GetAudioTime();
+ 
+     float diverge = 0.0f;
+     int frameDelay = m_double_framerate ? frame_interval / 2 : frame_interval;
++    int vsync_delay_clock = 0;
++    int64_t currentaudiotime = 0;
+ 
+     // attempt to reduce fps for standalone PIP
+     if (player_ctx->IsPIP() && framesPlayed % 2)
+@@ -1685,15 +1727,38 @@ void MythPlayer::AVSync(VideoFrame *buffer, bool limit_delay)
+     if (kScan_Detect == m_scan || kScan_Ignore == m_scan)
+         ps = kScan_Progressive;
+ 
++    bool dropframe = false;
++    QString dbg;
++
++    if (avsync_predictor_enabled) // && !prebuffering)
++    {
++        avsync_predictor += frame_interval;
++        if (avsync_predictor >= refreshrate)
++        {
++            int refreshperiodsinframe = avsync_predictor/refreshrate;
++            avsync_predictor -= refreshrate * refreshperiodsinframe;
++        }
++        else
++        {
++            dropframe = true;
++            dbg = "A/V predict drop frame, ";
++        }
++    }
++
+     if (diverge < -MAXDIVERGE)
+     {
++        dropframe = true;
+         // If video is way behind of audio, adjust for it...
+-        QString dbg = QString("Video is %1 frames behind audio (too slow), ")
++        dbg = QString("Video is %1 frames behind audio (too slow), ")
+             .arg(-diverge);
++    }
+ 
++    if (dropframe)
++    {
+         // Reset A/V Sync
+         lastsync = true;
+ 
++        currentaudiotime = AVSyncGetAudiotime();
+         if (!using_null_videoout &&
+             videoOutput->hasHWAcceleration() &&
+            !videoOutput->IsSyncLocked())
+@@ -1720,10 +1785,13 @@ void MythPlayer::AVSync(VideoFrame *buffer, bool limit_delay)
+         osdLock.lock();
+         videoOutput->PrepareFrame(buffer, ps, osd);
+         osdLock.unlock();
+-        VERBOSE(VB_PLAYBACK|VB_TIMESTAMP, QString("AVSync waitforframe %1 %2")
++        VERBOSE(VB_PLAYBACK|VB_TIMESTAMP,
++                LOC + QString("AVSync waitforframe %1 %2")
+                 .arg(avsync_adjustment).arg(m_double_framerate));
+-        videosync->WaitForFrame(frameDelay + avsync_adjustment + repeat_delay);
+-        VERBOSE(VB_PLAYBACK|VB_TIMESTAMP, "AVSync show");
++        vsync_delay_clock = videosync->WaitForFrame
++                            (frameDelay + avsync_adjustment + repeat_delay);
++        currentaudiotime = AVSyncGetAudiotime();
++        VERBOSE(VB_PLAYBACK|VB_TIMESTAMP, LOC + "AVSync show");
+         videoOutput->Show(ps);
+ 
+         if (videoOutput->IsErrored())
+@@ -1751,23 +1819,33 @@ void MythPlayer::AVSync(VideoFrame *buffer, bool limit_delay)
+             videoOutput->PrepareFrame(buffer, ps, osd);
+             osdLock.unlock();
+             // Display the second field
+-            videosync->WaitForFrame(frameDelay + avsync_adjustment);
++            //videosync->AdvanceTrigger();
++            vsync_delay_clock = videosync->WaitForFrame(frameDelay + avsync_adjustment);
+             videoOutput->Show(ps);
+         }
+ 
+         repeat_delay = frame_interval * repeat_pict * 0.5;
+ 
+         if (repeat_delay)
+-            VERBOSE(VB_TIMESTAMP, QString("A/V repeat_pict, adding %1 repeat "
++            VERBOSE(VB_TIMESTAMP, LOC + QString("A/V repeat_pict, adding %1 repeat "
+                     "delay").arg(repeat_delay));
+     }
+     else
+     {
+-        videosync->WaitForFrame(frameDelay);
++        vsync_delay_clock = videosync->WaitForFrame(frameDelay);
++        currentaudiotime = AVSyncGetAudiotime();
+     }
+ 
+     if (output_jmeter)
+-        output_jmeter->RecordCycleTime();
++    {
++        if (output_jmeter->RecordCycleTime())
++        {
++            VERBOSE(VB_PLAYBACK+VB_TIMESTAMP, LOC + QString("A/V avsync_delay: %1, "
++                    "avsync_avg: %2")
++                    .arg(avsync_delay / 1000).arg(avsync_avg / 1000)
++                    );
++        }
++    }
+ 
+     avsync_adjustment = 0;
+ 
+@@ -1775,7 +1853,8 @@ void MythPlayer::AVSync(VideoFrame *buffer, bool limit_delay)
+     {
+         // If audio is way behind of video, adjust for it...
+         // by cutting the frame rate in half for the length of this frame
+-        avsync_adjustment = refreshrate;
++        //avsync_adjustment = refreshrate;
++        avsync_adjustment = frame_interval;
+         lastsync = true;
+         VERBOSE(VB_PLAYBACK, LOC +
+                 QString("Video is %1 frames ahead of audio,\n"
+@@ -1784,54 +1863,72 @@ void MythPlayer::AVSync(VideoFrame *buffer, bool limit_delay)
+ 
+     if (audio.HasAudioOut() && normal_speed)
+     {
++        // must be sampled here due to Show delays
+         int64_t currentaudiotime = audio.GetAudioTime();
+-        VERBOSE(VB_TIMESTAMP, QString(
++        VERBOSE(VB_PLAYBACK+VB_TIMESTAMP, LOC + QString(
+                     "A/V timecodes audio %1 video %2 frameinterval %3 "
+-                    "avdel %4 avg %5 tcoffset %6")
++                    "avdel %4 avg %5 tcoffset %6"
++                    " avp %7 avpen %8"
++                    " avdc %9"
++                    )
+                 .arg(currentaudiotime)
+                 .arg(timecode)
+                 .arg(frame_interval)
+-                .arg(timecode - currentaudiotime)
++                .arg(timecode - currentaudiotime - (int)(vsync_delay_clock*audio.GetStretchFactor()+500)/1000)
+                 .arg(avsync_avg)
+                 .arg(tc_wrap[TC_AUDIO])
++                .arg(avsync_predictor)
++                .arg(avsync_predictor_enabled)
++                .arg(vsync_delay_clock)
+                  );
+         if (currentaudiotime != 0 && timecode != 0)
+         { // currentaudiotime == 0 after a seek
+             // The time at the start of this frame (ie, now) is given by
+             // last->timecode
+-            int delta = (int)((timecode - prevtc)/play_speed) - (frame_interval / 1000);
+-            prevtc = timecode;
+-            //cerr << delta << " ";
+-
+-            // If the timecode is off by a frame (dropped frame) wait to sync
+-            if (delta > (int) frame_interval / 1200 &&
+-                delta < (int) frame_interval / 1000 * 3 &&
+-                prevrp == 0)
++            if (prevtc != 0)
+             {
+-                // wait an extra frame interval
+-                avsync_adjustment += frame_interval;
++                int delta = (int)((timecode - prevtc)/play_speed) - (frame_interval / 1000);
++                // If the timecode is off by a frame (dropped frame) wait to sync
++                if (delta > (int) frame_interval / 1200 &&
++                    delta < (int) frame_interval / 1000 * 3 &&
++                    prevrp == 0)
++                {
++                    // wait an extra frame interval
++                    VERBOSE(VB_PLAYBACK+VB_TIMESTAMP, LOC + QString("A/V delay %1").arg(delta));
++                    avsync_adjustment += frame_interval;
++                    //videosync->AdvanceTrigger();
++                    //if (m_double_framerate)
++                    //    videosync->AdvanceTrigger();
++                }
+             }
++            prevtc = timecode;
+             prevrp = repeat_pict;
+ 
+-            avsync_delay = (timecode - currentaudiotime) * 1000;//usec
++            avsync_delay = (timecode - currentaudiotime) * 1000 - (int)(vsync_delay_clock*audio.GetStretchFactor());  //usec
+             // prevents major jitter when pts resets during dvd title
+             if (avsync_delay > 2000000 && limit_delay)
+                 avsync_delay = 90000;
+             avsync_avg = (avsync_delay + (avsync_avg * 3)) / 4;
+ 
++            int avsync_used = avsync_avg;
++            if (labs(avsync_used) > labs(avsync_delay))
++                avsync_used = avsync_delay;
++
+             /* If the audio time codes and video diverge, shift
+                the video by one interlaced field (1/2 frame) */
+             if (!lastsync)
+             {
+-                if (avsync_avg > frame_interval * 3 / 2)
++                if (avsync_used > refreshrate)
+                 {
+                     avsync_adjustment += refreshrate;
+-                    lastsync = true;
++                    //lastsync = true;
++                    VERBOSE(VB_PLAYBACK+VB_TIMESTAMP, LOC + "A/V avg high extend");
+                 }
+-                else if (avsync_avg < 0 - frame_interval * 3 / 2)
++                else if (avsync_used < 0 - refreshrate)
+                 {
+                     avsync_adjustment -= refreshrate;
+-                    lastsync = true;
++                    //lastsync = true;
++                    VERBOSE(VB_PLAYBACK+VB_TIMESTAMP, LOC + "A/V avg high skip");
+                 }
+             }
+             else
+@@ -1839,9 +1936,13 @@ void MythPlayer::AVSync(VideoFrame *buffer, bool limit_delay)
+         }
+         else
+         {
+-            avsync_avg = 0;
++            ResetAVSync();
+         }
+     }
++    else
++    {
++        VERBOSE(VB_PLAYBACK+VB_TIMESTAMP, LOC + QString("A/V no sync proc ns:%1").arg(normal_speed));
++    }
+ }
+ 
+ void MythPlayer::RefreshPauseFrame(void)
+@@ -3489,6 +3590,7 @@ void MythPlayer::ClearAfterSeek(bool clearvideobuffers)
+     commBreakMap.SetTracker(framesPlayed);
+     commBreakMap.ResetLastSkip();
+     needNewPauseFrame = true;
++    ResetAVSync();
+ }
+ 
+ void MythPlayer::SetPlayerInfo(TV *tv, QWidget *widget,
+diff --git a/mythtv/libs/libmythtv/mythplayer.h b/mythtv/libs/libmythtv/mythplayer.h
+index 8090e35..f55c8f9 100644
+--- a/mythtv/libs/libmythtv/mythplayer.h
++++ b/mythtv/libs/libmythtv/mythplayer.h
+@@ -515,6 +515,9 @@ class MPUBLIC MythPlayer
+     void  WrapTimecode(int64_t &timecode, TCTypes tc_type);
+     void  InitAVSync(void);
+     virtual void AVSync(VideoFrame *buffer, bool limit_delay = false);
++    void  ResetAVSync(void);
++    int64_t AVSyncGetAudiotime(void);
++    void  SetFrameInterval(FrameScanType scan, double speed);
+     void  FallbackDeint(void);
+     void  CheckExtraAudioDecode(void);
+ 
+@@ -703,6 +706,8 @@ class MPUBLIC MythPlayer
+     int        avsync_delay;
+     int        avsync_adjustment;
+     int        avsync_avg;
++    int        avsync_predictor;
++    bool       avsync_predictor_enabled;
+     int        refreshrate;
+     bool       lastsync;
+     bool       decode_extra_audio;
+diff --git a/mythtv/libs/libmythtv/vsync.cpp b/mythtv/libs/libmythtv/vsync.cpp
+index 1f08fc5..75528bc 100644
+--- a/mythtv/libs/libmythtv/vsync.cpp
++++ b/mythtv/libs/libmythtv/vsync.cpp
+@@ -130,29 +130,30 @@ VideoSync::VideoSync(VideoOutput *video_output,
+                      bool halve_frame_interval) :
+     m_video_output(video_output),   m_frame_interval(frameint),
+     m_refresh_interval(refreshint), m_interlaced(halve_frame_interval),
+-    m_delay(-1)
++    m_nexttrigger(0),
++    m_delay(-1),
++    m_synchronous(false)
+ {
+-    bzero(&m_nexttrigger, sizeof(m_nexttrigger));
++    int fieldint = frameint;
++    if (halve_frame_interval)
++        fieldint /= 2;
++    double sync_factor = fieldint * 2.0f / refreshint;
++    sync_factor = sync_factor - round(sync_factor);
++    m_synchronous = (sync_factor >= -0.005) && (sync_factor <= 0.005);
++    VERBOSE(VB_PLAYBACK, LOC + QString("Set video sync frame interval to %1 (synced:%2)")
++                                 .arg(m_frame_interval).arg(m_synchronous));
+ }
+ 
+-void VideoSync::Start(void)
++int64_t GetTime(void)
+ {
+-    gettimeofday(&m_nexttrigger, NULL); // now
++    struct timeval now_tv;
++    gettimeofday(&now_tv, NULL); // now
++    return now_tv.tv_sec * 1000000LL + now_tv.tv_usec;
+ }
+ 
+-void VideoSync::OffsetTimeval(struct timeval& tv, int offset)
++void VideoSync::Start(void)
+ {
+-    tv.tv_usec += offset;
+-    while (tv.tv_usec > 999999)
+-    {
+-        tv.tv_sec++;
+-        tv.tv_usec -= 1000000;
+-    }
+-    while (tv.tv_usec < 0)
+-    {
+-        tv.tv_sec--;
+-        tv.tv_usec += 1000000;
+-    }
++    m_nexttrigger = GetTime();
+ }
+ 
+ /** \fn VideoSync::CalcDelay()
+@@ -168,13 +169,11 @@ void VideoSync::OffsetTimeval(struct timeval& tv, int offset)
+  */
+ int VideoSync::CalcDelay()
+ {
+-    struct timeval now;
+-    gettimeofday(&now, NULL);
++    int64_t now = GetTime();
+     //cout << "CalcDelay: next: " << timeval_str(m_nexttrigger) << " now "
+     // << timeval_str(now) << endl;
+ 
+-    int ret_val = (m_nexttrigger.tv_sec - now.tv_sec) * 1000000 +
+-                  (m_nexttrigger.tv_usec - now.tv_usec);
++    int ret_val = m_nexttrigger - now;
+ 
+     //cout << "delay " << ret_val << endl;
+ 
+@@ -186,19 +185,17 @@ int VideoSync::CalcDelay()
+             ret_val = m_frame_interval * 4;
+ 
+         // set nexttrigger to our new target time
+-        m_nexttrigger.tv_sec = now.tv_sec;
+-        m_nexttrigger.tv_usec = now.tv_usec;
+-        OffsetTimeval(m_nexttrigger, ret_val);
++        m_nexttrigger = now;
++        m_nexttrigger += ret_val;
+     }
+ 
+-    if (ret_val < -m_frame_interval)
++    if ((ret_val < -m_frame_interval) && (m_frame_interval >= m_refresh_interval))
+     {
+         ret_val = -m_frame_interval;
+ 
+         // set nexttrigger to our new target time
+-        m_nexttrigger.tv_sec = now.tv_sec;
+-        m_nexttrigger.tv_usec = now.tv_usec;
+-        OffsetTimeval(m_nexttrigger, ret_val);
++        m_nexttrigger = now;
++        m_nexttrigger += ret_val;
+     }
+ 
+     return ret_val;
+@@ -215,10 +212,20 @@ int VideoSync::CalcDelay()
+ void VideoSync::KeepPhase()
+ {
+     // cerr << m_delay << endl;
+-    if (m_delay < -(m_refresh_interval/2))
+-        OffsetTimeval(m_nexttrigger, 200);
+-    else if (m_delay > -500)
+-        OffsetTimeval(m_nexttrigger, -2000);
++    if (m_synchronous)
++    {
++        if (m_delay < -(m_refresh_interval - 500))
++            m_nexttrigger += 200;
++        else if (m_delay > -500)
++            m_nexttrigger += -2000;
++    }
++    else
++    {
++        if (m_delay < -(m_refresh_interval + 500))
++            m_nexttrigger += 200;
++        else if (m_delay >= 0)
++            m_nexttrigger += -2000;
++    }
+ }
+ 
+ #ifndef _WIN32
+@@ -308,10 +315,10 @@ void DRMVideoSync::Start(void)
+     VideoSync::Start();
+ }
+ 
+-void DRMVideoSync::WaitForFrame(int sync_delay)
++int DRMVideoSync::WaitForFrame(int sync_delay)
+ {
+     // Offset for externally-provided A/V sync delay
+-    OffsetTimeval(m_nexttrigger, sync_delay);
++    m_nexttrigger += sync_delay;
+ 
+     m_delay = CalcDelay();
+     //cerr << "WaitForFrame at : " << m_delay;
+@@ -331,7 +338,7 @@ void DRMVideoSync::WaitForFrame(int sync_delay)
+     if (m_delay > 0)
+     {
+         // Wait for any remaining retrace intervals in one pass.
+-        int n = m_delay / m_refresh_interval + 1;
++        int n = (m_delay + m_refresh_interval - 1) / m_refresh_interval;
+ 
+         drm_wait_vblank_t blank;
+         blank.request.type = DRM_VBLANK_RELATIVE;
+@@ -341,6 +348,7 @@ void DRMVideoSync::WaitForFrame(int sync_delay)
+         //cerr << "Wait " << n << " intervals. Count " << blank.request.sequence;
+         //cerr  << " Delay " << m_delay << endl;
+     }
++    return m_delay;
+ 
+     KeepPhase();
+ }
+@@ -412,42 +420,83 @@ void OpenGLVideoSync::Start(void)
+ #endif /* USING_OPENGL_VSYNC */
+ }
+ 
+-void OpenGLVideoSync::WaitForFrame(int sync_delay)
++int OpenGLVideoSync::WaitForFrame(int sync_delay)
+ {
+     (void) sync_delay;
+ #ifdef USING_OPENGL_VSYNC
++//#define GLVSYNCDEBUG
++#ifdef GLVSYNCDEBUG
++    int refreshcount = 0;
++#endif
+     const QString msg1("First A/V Sync"), msg2("Second A/V Sync");
+-    OffsetTimeval(m_nexttrigger, sync_delay);
++    m_nexttrigger += sync_delay;
+ 
+     if (m_video_output && m_video_output->IsEmbedding())
+     {
+         m_delay = CalcDelay();
+         if (m_delay > 0)
+             usleep(m_delay);
+-        return;
++        return 0;
+     }
+ 
+     if (!m_context)
+-        return;
++        return 0;
+ 
+     unsigned int frameNum = m_context->GetVideoSyncCount();
+ 
++#ifdef GLVSYNCDEBUG
++    int delay1 = m_delay;
++    int delay2;
++#endif
+     // Always sync to the next retrace execpt when we are very late.
+     if ((m_delay = CalcDelay()) > -(m_refresh_interval/2))
+     {
++#ifdef GLVSYNCDEBUG
++        delay2 = m_delay;
++#endif
+         m_context->WaitForVideoSync(2, (frameNum+1)%2 ,&frameNum);
+         m_delay = CalcDelay();
++#ifdef GLVSYNCDEBUG
++        refreshcount++;
++#endif
+     }
++#ifdef GLVSYNCDEBUG
++    else
++        delay2 = m_delay;
++#endif
+ 
++#ifdef GLVSYNCDEBUG
++    int delay3 = m_delay;
++#endif
+     // Wait for any remaining retrace intervals in one pass.
+     if (m_delay > 0)
+     {
+-        uint n = m_delay / m_refresh_interval + 1;
++        //uint n = m_delay / m_refresh_interval + 1;
++        uint n = (m_delay + m_refresh_interval - 1) / m_refresh_interval;
+         m_context->WaitForVideoSync((n+1), (frameNum+n)%(n+1), &frameNum);
++#ifdef GLVSYNCDEBUG
++        refreshcount += (int)n;
++#endif
+         m_delay = CalcDelay();
+     }
++#ifdef GLVSYNCDEBUG
++    VERBOSE(VB_PLAYBACK+VB_TIMESTAMP, QString("VS: WFF: ri:%1 fi:%2 delay1:%3 delay2:%4 delay3:%5 skip:%6 finaldelay:%7")
++            .arg(m_refresh_interval)
++            .arg(m_frame_interval)
++            .arg(delay1)
++            .arg(delay2)
++            .arg(delay3)
++            .arg(refreshcount)
++            .arg(m_delay)
++           );
++#endif
++
++    return m_delay;
+ 
+     KeepPhase();
++#ifdef GLVSYNCDEBUG
++    VERBOSE(VB_PLAYBACK+VB_TIMESTAMP, "VS: AdvanceTrigger");
++#endif
+ #endif /* USING_OPENGL_VSYNC */
+ }
+ #endif /* !_WIN32 */
+@@ -494,9 +543,9 @@ bool RTCVideoSync::TryInit(void)
+     return true;
+ }
+ 
+-void RTCVideoSync::WaitForFrame(int sync_delay)
++int RTCVideoSync::WaitForFrame(int sync_delay)
+ {
+-    OffsetTimeval(m_nexttrigger, sync_delay);
++    m_nexttrigger += sync_delay;
+ 
+     m_delay = CalcDelay();
+ 
+@@ -509,6 +558,7 @@ void RTCVideoSync::WaitForFrame(int sync_delay)
+         if ((val < 0) && (m_delay > 0))
+             usleep(m_delay);
+     }
++    return 0;
+ }
+ #endif /* __linux__ */
+ 
+@@ -532,10 +582,10 @@ bool VDPAUVideoSync::TryInit(void)
+     return true;
+ }
+ 
+-void VDPAUVideoSync::WaitForFrame(int sync_delay)
++int VDPAUVideoSync::WaitForFrame(int sync_delay)
+ {
+     // Offset for externally-provided A/V sync delay
+-    OffsetTimeval(m_nexttrigger, sync_delay);
++    m_nexttrigger += sync_delay;
+     m_delay = CalcDelay();
+ 
+     if (m_delay < 0)
+@@ -543,6 +593,7 @@ void VDPAUVideoSync::WaitForFrame(int sync_delay)
+ 
+     VideoOutputVDPAU *vo = (VideoOutputVDPAU *)(m_video_output);
+     vo->SetNextFrameDisplayTimeOffset(m_delay);
++    return 0;
+ }
+ #endif
+ 
+@@ -563,10 +614,10 @@ bool BusyWaitVideoSync::TryInit(void)
+     return true;
+ }
+ 
+-void BusyWaitVideoSync::WaitForFrame(int sync_delay)
++int BusyWaitVideoSync::WaitForFrame(int sync_delay)
+ {
+     // Offset for externally-provided A/V sync delay
+-    OffsetTimeval(m_nexttrigger, sync_delay);
++    m_nexttrigger += sync_delay;
+ 
+     m_delay = CalcDelay();
+ 
+@@ -592,6 +643,7 @@ void BusyWaitVideoSync::WaitForFrame(int sync_delay)
+         if (cnt > 1)
+             m_cheat -= 200;
+     }
++    return 0;
+ }
+ 
+ USleepVideoSync::USleepVideoSync(VideoOutput *vo,
+@@ -609,13 +661,14 @@ bool USleepVideoSync::TryInit(void)
+     return true;
+ }
+ 
+-void USleepVideoSync::WaitForFrame(int sync_delay)
++int USleepVideoSync::WaitForFrame(int sync_delay)
+ {
+     // Offset for externally-provided A/V sync delay
+-    OffsetTimeval(m_nexttrigger, sync_delay);
++    m_nexttrigger += sync_delay;
+ 
+     m_delay = CalcDelay();
+     if (m_delay > 0)
+         usleep(m_delay);
++    return 0;
+ }
+ 
+diff --git a/mythtv/libs/libmythtv/vsync.h b/mythtv/libs/libmythtv/vsync.h
+index 156cdad..6c185dc 100644
+--- a/mythtv/libs/libmythtv/vsync.h
++++ b/mythtv/libs/libmythtv/vsync.h
+@@ -64,6 +64,7 @@ class VideoSync
+     virtual void Start(void);
+ 
+     /** \brief Waits for next a frame or field.
++     *   Returns delay to real frame timing in usec
+      *
+      *   Start(void), WaitForFrame(void), and Stop(void) should
+      *   always be called from same thread, to prevent bad
+@@ -72,7 +73,7 @@ class VideoSync
+      *  \param sync_delay time until the desired frame or field
+      *  \sa CalcDelay(void), KeepPhase(void)
+      */
+-    virtual void WaitForFrame(int sync_delay) = 0;
++    virtual int WaitForFrame(int sync_delay) = 0;
+ 
+     /// \brief Returns the (minimum) refresh interval of the output device.
+     int getRefreshInterval(void) const { return m_refresh_interval; }
+@@ -92,7 +93,6 @@ class VideoSync
+                                  uint frame_interval, uint refresh_interval,
+                                  bool interlaced);
+   protected:
+-    static void OffsetTimeval(struct timeval& tv, int offset);
+     int CalcDelay(void);
+     void KeepPhase(void);
+ 
+@@ -100,8 +100,9 @@ class VideoSync
+     int m_frame_interval; // of video
+     int m_refresh_interval; // of display
+     bool m_interlaced;
+-    struct timeval m_nexttrigger;
++    int64_t m_nexttrigger;
+     int m_delay;
++    bool m_synchronous;
+     
+     static int m_forceskip;
+ };
+@@ -123,7 +124,7 @@ class DRMVideoSync : public VideoSync
+     QString getName(void) const { return QString("DRM"); }
+     bool TryInit(void);
+     void Start(void);
+-    void WaitForFrame(int sync_delay);
++    int WaitForFrame(int sync_delay);
+ 
+   private:
+     int m_dri_fd;
+@@ -164,7 +165,7 @@ class OpenGLVideoSync : public VideoSync
+     QString getName(void) const { return QString("SGI OpenGL"); }
+     bool TryInit(void);
+     void Start(void);
+-    void WaitForFrame(int sync_delay);
++    int WaitForFrame(int sync_delay);
+ 
+   private:
+     MythRenderOpenGL  *m_context;
+@@ -192,7 +193,7 @@ class RTCVideoSync : public VideoSync
+ 
+     QString getName(void) const { return QString("RTC"); }
+     bool TryInit(void);
+-    void WaitForFrame(int sync_delay);
++    int WaitForFrame(int sync_delay);
+ 
+   private:
+     int m_rtcfd;
+@@ -212,7 +213,7 @@ class VDPAUVideoSync : public VideoSync
+ 
+     QString getName(void) const { return QString("VDPAU"); }
+     bool TryInit(void);
+-    void WaitForFrame(int sync_delay);
++    int WaitForFrame(int sync_delay);
+ 
+   private:
+ };
+@@ -239,7 +240,7 @@ class BusyWaitVideoSync : public VideoSync
+ 
+     QString getName(void) const { return QString("USleep with busy wait"); }
+     bool TryInit(void);
+-    void WaitForFrame(int sync_delay);
++    int WaitForFrame(int sync_delay);
+ 
+   private:
+     int m_cheat;
+@@ -266,6 +267,6 @@ class USleepVideoSync : public VideoSync
+ 
+     QString getName(void) const { return QString("USleep"); }
+     bool TryInit(void);
+-    void WaitForFrame(int sync_delay);
++    int WaitForFrame(int sync_delay);
+ };
+ #endif /* VSYNC_H_INCLUDED */
