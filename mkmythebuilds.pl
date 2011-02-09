@@ -128,8 +128,10 @@ foreach my $pkg (keys %pkgs) {
       $revs{$rev}{'suffix'} = '' unless $revs{$rev}{'suffix'};
     }
 
-    REV: foreach my $h (keys %revs) {
-      my ($desc, $major, $minor, $superminor, $seq) = map { $revs{$h}{$_} } ('desc', 'major', 'minor', 'superminor', 'seq');
+    REV: foreach my $h (@$hashes) {
+      my ($desc, $major, $minor, $superminor, $seq)
+        = map { $revs{$h}{$_} }
+          ('desc', 'major', 'minor', 'superminor', 'seq');
       my $bv = "${prefix}${major}${minor}${superminor}.${seq}";
       my $bn = "${pkg}-${bv}";
       my $d = "${ewmgoe}/${cat}/${pkg}";
@@ -140,17 +142,13 @@ foreach my $pkg (keys %pkgs) {
         my $lines = EW::File::readlines($f);
         my ($hashline) = grep(/MYTHCOMMIT/, @$lines);
         my ($fh) = ($hashline =~ /\"(.*)\"/);
-        if ($fh ne $h) {
-          my $hi = $baserevs{$h};
-          my $fhi = $baserevs{$fh};
-          if ($hi > $fhi) {
-            $w = 'Updating';
-          } else {
-            dbg("Later OK: $bn ($hi) <= $fhi", $gitloglevel);
-            next REV;
-          }
+        next REV if $fh eq $h;
+        my $hi = $baserevs{$h};
+        my $fhi = $baserevs{$fh};
+        if ($hi > $fhi) {
+          $w = 'Updating';
         } else {
-          dbg("Good    : $bn", $gitloglevel);
+          dbg("Collides: $bn (${hi}-${h}) < ${fhi}-${fh}");
           next REV;
         }
       }
