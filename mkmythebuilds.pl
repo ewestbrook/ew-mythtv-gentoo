@@ -89,7 +89,6 @@ foreach my $pkg (keys %pkgs) {
 
     dbg("$repo/$br: Scraping full log", $gitloglevel);
     my ($allhashes, $se1) = EW::Sys::do("git log --reverse --pretty=\"format:%H\"", $gitloglevel, $gitloglevel);
-    dbg("$repo/$br: Total commits: " . scalar(@$allhashes));
 
     dbg("$repo/$br: Indexing full log", $gitloglevel);
     my $i = 0;
@@ -120,7 +119,7 @@ foreach my $pkg (keys %pkgs) {
           }
         }
 
-      $revs{$rev}{'superminor'} = '.0' unless $revs{$rev}{'superminor'};
+      # $revs{$rev}{'superminor'} = '.0' unless $revs{$rev}{'superminor'};
       $revs{$rev}{'seq'} = '0' unless $revs{$rev}{'seq'};
 
       }
@@ -128,11 +127,12 @@ foreach my $pkg (keys %pkgs) {
       $revs{$rev}{'suffix'} = '' unless $revs{$rev}{'suffix'};
     }
 
+    dbg("$repo/$br: Considering " . scalar(@$hashes) . ' commits', $gitloglevel);
     REV: foreach my $h (@$hashes) {
       my ($desc, $major, $minor, $superminor, $seq)
         = map { $revs{$h}{$_} }
           ('desc', 'major', 'minor', 'superminor', 'seq');
-      my $bv = "${prefix}${major}${minor}${superminor}.${seq}";
+      my $bv = "${prefix}${major}${minor}${superminor}-P${seq}";
       my $bn = "${pkg}-${bv}";
       my $d = "${ewmgoe}/${cat}/${pkg}";
       my $f = "${d}/${bn}.ebuild";
