@@ -42,6 +42,7 @@ IUSE="
 RDEPEND="
 	media-fonts/corefonts
 	media-fonts/dejavu
+	media-fonts/liberation-fonts
 	media-libs/freetype:2
 	media-sound/lame
 	x11-libs/libX11
