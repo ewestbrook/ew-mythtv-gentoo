@@ -119,7 +119,7 @@ foreach my $pkg (keys %pkgs) {
           }
         }
 
-      # $revs{$rev}{'superminor'} = '.0' unless $revs{$rev}{'superminor'};
+      $revs{$rev}{'superminor'} = '' unless $revs{$rev}{'superminor'};
       $revs{$rev}{'seq'} = '0' unless $revs{$rev}{'seq'};
 
       }
@@ -132,7 +132,7 @@ foreach my $pkg (keys %pkgs) {
       my ($desc, $major, $minor, $superminor, $seq)
         = map { $revs{$h}{$_} }
           ('desc', 'major', 'minor', 'superminor', 'seq');
-      my $bv = "${prefix}${major}${minor}${superminor}-P${seq}";
+      my $bv = "${prefix}${major}${minor}${superminor}_p${seq}";
       my $bn = "${pkg}-${bv}";
       my $d = "${ewmgoe}/${cat}/${pkg}";
       my $f = "${d}/${bn}.ebuild";
