@@ -16,7 +16,7 @@ IUSE=""
 
 DEPEND="
   x11-libs/qt-core:4
-  >=media-tv/mythtv-${PV}
+  >=media-tv/mythtv-${MYTHMAJOR}.${MYTHMINOR}
 "
 RDEPEND="${DEPEND}"
 
