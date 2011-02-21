@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source /etc/conf.d/mythbackend
+
+[ -z "$MYTHTV_LOGDIR" ] && MYTHTV_LOGDIR="/var/log/mythtv/mythbackend/"
+[ -z "$MYTHTV_USER"   ] && MYTHTV_USER="mythtv"
+
+exec setuidgid "$MYTHTV_USER" multilog t "$MYTHTV_LOGDIR"

@@ -21,6 +21,7 @@ IUSE="
   alsa
   altivec
  +css
+  daemontools
   dbus
   debug
   directv
@@ -62,6 +63,7 @@ RDEPEND="
 	|| ( net-misc/wget media-tv/xmltv )
 	alsa? ( media-libs/alsa-lib )
 	css? ( media-libs/libdvdcss )
+	daemontools? ( sys-process/daemontools )
 	dbus? ( x11-libs/qt-dbus:4 )
 	directv? ( virtual/perl-Time-HiRes )
 	dvb? ( media-libs/libdvb media-tv/linuxtv-dvb-headers )
@@ -150,13 +152,23 @@ src_install() {
 	dodir /var/log/mythtv
 	fowners mythtv:mythtv /var/log/mythtv
 	for i in mythbackend mythfrontend ; do
-		touch "${D}/var/log/mythtv/${i}.log"
-		fowners mythtv:mythtv "/var/log/mythtv/${i}.log"
-		newinitd "${FILESDIR}/${i}.rc" ${i}
 		newconfd "${FILESDIR}/${i}.conf" ${i}
-		dodir "/var/service/${i}"
-		exeinto "/var/service/${i}"
-		newexe "${FILESDIR}/${i}.run" run
+		if use daemontools ; then
+			dodir "/var/service/${i}"
+			exeinto "/var/service/${i}"
+			newexe "${FILESDIR}/${i}.run" run
+
+			dodir "/var/service/${i}/log"
+			exeinto "/var/service/${i}/log"
+			newexe "${FILESDIR}/${i}.log.run" run
+
+			dodir "/var/log/mythtv/${i}"
+			fowners mythtv:mythtv "/var/log/mythtv/${i}"
+		else
+			newinitd "${FILESDIR}/${i}.rc" ${i}
+			touch "${D}/var/log/mythtv/${i}.log"
+			fowners mythtv:mythtv "/var/log/mythtv/${i}.log"
+		fi
 	done
 }
 
