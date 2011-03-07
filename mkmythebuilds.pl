@@ -26,27 +26,27 @@ my ($so, $se);
                        , 'repo' => 'mythtv'
                        , 'branches' => { 'fixes/0.23' => { 'prefix' => '', 'arch' => '' }
                                          , 'fixes/0.24' => { 'prefix' => '', 'arch' => '' }
-                                         , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+                                         , 'master' => { 'prefix' => '99999.0', 'arch' => '~' } } }
          , 'mythplugins' => { 'cat' => 'media-plugins'
                               , 'repo' => 'mythtv'
                               , 'branches' => { 'fixes/0.23' => { 'prefix' => '', 'arch' => '' }
                                                 , 'fixes/0.24' => { 'prefix' => '', 'arch' => '' }
-                                                , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+                                                , 'master' => { 'prefix' => '99999.0', 'arch' => '~' } } }
          , 'mythweb' => { 'cat' => 'www-apps'
                           , 'repo' => 'mythweb'
                           , 'branches' => { 'fixes/0.23' => { 'prefix' => '0.23.1', 'arch' => '' }
                                             , 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
-                                            , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+                                            , 'master' => { 'prefix' => '99999.0', 'arch' => '~' } } }
          , 'myththemes' => { 'cat' => 'x11-themes'
                              , 'repo' => 'myththemes'
                              , 'branches' => { 'fixes/0.23' => { 'prefix' => '0.23.1', 'arch' => '' }
                                                , 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
-                                               , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+                                               , 'master' => { 'prefix' => '99999.0', 'arch' => '~' } } }
          , 'nuvexport' => { 'cat' => 'media-video'
                              , 'repo' => 'nuvexport'
                              , 'branches' => { 'fixes/0.23' => { 'prefix' => '0.23.1', 'arch' => '' }
                                                , 'fixes/0.24' => { 'prefix' => '0.24.0', 'arch' => '' }
-                                               , 'master' => { 'prefix' => '99999', 'arch' => '~' } } }
+                                               , 'master' => { 'prefix' => '99999.0', 'arch' => '~' } } }
         );
 
 # my $cat = 'media-tv';
@@ -57,7 +57,7 @@ my ($so, $se);
 
 foreach my $pkg (keys %pkgs) {
   my ($cat, $repo) = map { $pkgs{$pkg}{$_} } ('cat', 'repo');
-  dbg("===== $pkg =====");
+  dbg("===== $pkg ====="), $gitloglevel);
   dbg("pkg $pkg, cat $cat, repo $repo", $gitloglevel);
 
   chdir("$mythdir/$repo");
