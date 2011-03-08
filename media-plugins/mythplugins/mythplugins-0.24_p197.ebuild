@@ -5,6 +5,6 @@
 ##########################################
 
 MYTHBRANCH="fixes"
-MYTHCOMMIT="fe8f4423cbb5ce928b127809285ecac1cabd9bbb"
+MYTHCOMMIT="9d533f3de7c5e73704c555bec0df58710e0b4f43"
 KEYWORDS="amd64 ppc x86"
 inherit ew-mythplugins
