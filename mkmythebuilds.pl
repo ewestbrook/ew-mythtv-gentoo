@@ -57,7 +57,7 @@ my ($so, $se);
 
 foreach my $pkg (keys %pkgs) {
   my ($cat, $repo) = map { $pkgs{$pkg}{$_} } ('cat', 'repo');
-  dbg("===== $pkg ====="), $gitloglevel);
+  dbg("===== $pkg =====", $gitloglevel);
   dbg("pkg $pkg, cat $cat, repo $repo", $gitloglevel);
 
   chdir("$mythdir/$repo");
