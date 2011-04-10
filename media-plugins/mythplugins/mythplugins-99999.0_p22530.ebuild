@@ -4,7 +4,7 @@
 # E. Westbrook <ewmgoe@westbrook.com>    #
 ##########################################
 
-MYTHBRANCH="fixes"
-MYTHCOMMIT="27c3ea50cf926569ea9f021f5102c10f5456270f"
-KEYWORDS="amd64 ppc x86"
-inherit ew-mythtv
+MYTHBRANCH="master"
+MYTHCOMMIT="d81e4ef542d6d9e9bd79dc58b70f9b90d04c06b2"
+KEYWORDS="~amd64 ~ppc ~x86"
+inherit ew-mythplugins
