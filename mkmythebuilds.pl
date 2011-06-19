@@ -174,7 +174,7 @@ foreach my $pkg (keys %pkgs) {
   }
 }
 
-if (scalar(@resultfiles)) {
+if (1 && scalar(@resultfiles)) {
   dbg("Commiting for $nowday: " . scalar(@resultfiles) . " files");
   chdir($ewmgoe);
   ($so, $se) = EW::Sys::do('git add ' . join(' ', @resultfiles));
