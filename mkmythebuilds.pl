@@ -14,9 +14,9 @@ EW::Time::p('TZ' => 'UTC');
 $ENV{'TZ'} = 'UTC';
 my $nowday = EW::Time->now->tostring('%Y%m%d');
 
-dbg("====================", DBGDEBUG);
-dbg("===== $0 start =====", DBGDEBUG);
-dbg("====================", DBGDEBUG);
+dbg("====================", DBGVERBOSE);
+dbg("===== $0 start =====", DBGVERBOSE);
+dbg("====================", DBGVERBOSE);
 
 my $gitloglevel = DBGDEBUG;
 
@@ -27,8 +27,8 @@ my $homedir = '/home/eric';
 my $devdir = "${homedir}/dev";
 my $tmpdir = "${homedir}/tmp/ewmgoe";
 
-# my $ewmgoehub = 'git@github.com:ewestbrook/ew-mythtv-gentoo.git';
-my $ewmgoehub = '/home/eric/dev/git/ew-mythtv-gentoo';
+my $ewmgoehub = 'git@github.com:ewestbrook/ew-mythtv-gentoo.git';
+# my $ewmgoehub = '/home/eric/dev/git/ew-mythtv-gentoo';
 my $ewmgoe = "$tmpdir/ew-mythtv-gentoo";
 my $ewmgoeopt = "--git-dir=$ewmgoe/.git --work-tree=$ewmgoe";
 
@@ -51,7 +51,7 @@ if (0) {
 }
 
 my %repos;
-if (0) {
+if (1) {
   %repos = ('mythtv' => { 'github' => 'http://github.com/MythTV/mythtv.git', 'cwd' => 'mythtv' }
             , 'mythweb' => { 'github' => 'http://github.com/MythTV/mythweb.git', 'cwd' => 'mythweb' }
             , 'myththemes' => { 'github' => 'http://github.com/MythTV/myththemes.git', 'cwd' => 'myththemes' }
@@ -62,6 +62,16 @@ if (0) {
             , 'myththemes' => { 'github' => '/home/eric/tmp/refgoe/myththemes', 'cwd' => 'myththemes' }
             , 'nuvexport' => { 'github' => '/home/eric/tmp/refgoe/nuvexport', 'cwd' => 'nuvexport' });
 }
+
+my %hackytags = ('myththemes' => { 'v0.23' => '3c126bc3c97a547c2de3'
+                                   , 'v0.24' => 'f0172278cd378a3c7178'
+                                   , 'v0.25pre' => '7491bf1b0d0bb8c8d070' }
+                 , 'mythweb' => { 'v0.23' => '6cb91dfea140542a28c7'
+                                  , 'v0.24' => 'ee4ac675568969eb69d2'
+                                  , 'v0.25pre' => '5a4362e2f1c731fa2418' }
+                 , 'nuvexport' => { 'v0.23' => 'dc4f65842c892b292f1d'
+                                   , 'v0.24' => '03a753d74908b6bdb7ae'
+                                   , 'v0.25pre' => '523aef09357f4a8a4ccc' } );
 
 # my $cat = 'media-tv';
 # my $pkg = 'mythtv';
@@ -87,6 +97,14 @@ foreach my $pkg (keys %pkgs) {
     dbg("Cloning: $repo into $wkdir", DBGVERBOSE);
     ($so, $se) = EW::Sys::do("git clone $repos{$repo}{'github'} $wkdir", $gitloglevel, $gitloglevel, $gitloglevel);
     $repos{$repo}{'cloned'}++;
+
+    # hack in the missing tags!
+    my $r = $hackytags{$pkg};
+    foreach my $k (keys %$r) {
+      ($so, $se) = EW::Sys::do("git $wkdiropt tag $k $r->{$k}"
+                               # , DBGINFO, DBGINFO, DBGINFO);
+                               , $gitloglevel, $gitloglevel, $gitloglevel);
+    }
   }
 
   my $branches = $pkgs{$pkg}{'branches'};
@@ -164,7 +182,7 @@ foreach my $pkg (keys %pkgs) {
           dbg("Ebuild for $bn duplicates " . basename($fq), DBGWARN);
         }
       }
-      dbg("${w}: ${bn}", DBGINFO);
+      dbg("${w} ${h}: ${bn}", DBGINFO);
       my $lines = ebuildcontent($pkg, $br, $h, $arch);
       EW::File::writelines($f, $lines);
       push @resultfiles, $f;
@@ -180,11 +198,12 @@ foreach my $pkg (keys %pkgs) {
 }
 
 if (1 && scalar(@resultfiles)) {
+  my $gll = $gitloglevel;
   dbg("Commiting for $nowday: " . scalar(@resultfiles) . " files", DBGINFO);
-  ($so, $se) = EW::Sys::do('git $ewmgoeopt add ' . join(' ', @resultfiles), $gitloglevel, $gitloglevel, $gitloglevel);
+  ($so, $se) = EW::Sys::do('git $ewmgoeopt add ' . join(' ', @resultfiles), $gll, $gll, $gll);
   die "Git add error: \n" . join("\n", @$so, @$se) if scalar(@$se);
-  ($so, $se) = EW::Sys::do("git $ewmgoeopt commit -m 'upstream $nowday'", $gitloglevel, $gitloglevel, $gitloglevel);
-  ($so, $se) = EW::Sys::do('git $ewmgoeopt push', $gitloglevel, $gitloglevel, $gitloglevel);
+  ($so, $se) = EW::Sys::do("git $ewmgoeopt commit -m 'upstream $nowday'", $gll, $gll, $gll);
+  ($so, $se) = EW::Sys::do('git $ewmgoeopt push', $gll, $gll, $gll);
 }
 
 exit;
@@ -228,7 +247,7 @@ sub ebuildcontent {
 
 sub getdesc {
   my ($h, $wkdiropt) = @_;
-  ($so, $se) = EW::Sys::do("git $wkdiropt describe $h", $gitloglevel, $gitloglevel, $gitloglevel);
+  ($so, $se) = EW::Sys::do("git $wkdiropt describe --tags $h", $gitloglevel, $gitloglevel, $gitloglevel);
   my $d = shift @$so;
   $d = '' unless defined $d;
   return $d;
@@ -238,7 +257,8 @@ sub getbv {
   my $d = shift;
   my ($bv, $arch, $vn, $vntype, $seq) = ('', '', '', '', '');
   if (($vn, $vntype, undef, $seq) = ($d =~ /^[^\d\.]*?([\d\.]+)(pre|)(-([^-]+)-[^-]+)?$/)) {
-    $bv = "${vn}" . ($seq ? '-' . ('pre' eq $vntype ? 'pre' : 'p') . $seq : '');
+    $seq = 0 unless $seq;
+    $bv = "${vn}" . ('pre' eq $vntype ? "_pre${seq}" : ($seq ? "_p${seq}" : ''));
     $arch = ('pre' eq $vntype ? '~' : '');
   }
   my %lhs = ('vn' => $vn
