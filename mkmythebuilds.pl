@@ -38,6 +38,9 @@ my ($so, $se);
 $pkgs{'mythtv'} = { 'cat' => 'media-tv'
                     , 'repo' => 'mythtv'
                     , 'branches' => [ 'fixes/0.24', 'master' ] };
+$pkgs{'mythplugins'} = { 'cat' => 'media-plugins'
+                    , 'repo' => 'mythtv'
+                    , 'branches' => [ 'fixes/0.24', 'master' ] };
 $pkgs{'mythweb'} = { 'cat' => 'www-apps'
                      , 'repo' => 'mythweb'
                      , 'branches' => [ 'fixes/0.24', 'master' ] };
