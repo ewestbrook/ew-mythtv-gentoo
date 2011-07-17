@@ -72,7 +72,7 @@ RDEPEND="
 	jack? ( media-sound/jack-audio-connection-kit )
 	lcd? ( app-misc/lcdproc )
 	lirc? ( app-misc/lirc )
-	perl? ( dev-perl/DBD-mysql )
+	perl? ( dev-perl/DBD-mysql dev-perl/Net-UPnP )
 	pulseaudio? ( media-sound/pulseaudio )
 	python? ( dev-python/mysql-python dev-python/lxml )
 	vdpau? ( x11-libs/libvdpau )
@@ -91,9 +91,13 @@ src_unpack() {
 	S="${ORIGINAL_S}/mythtv"
 	cd "${S}"
 	epatch "${FILESDIR}/${PN}-0.21-ldconfig-sanxbox-fix.patch"
-	epatch "${FILESDIR}/${PN}-ew-square-pixels.patch"
-	epatch "${FILESDIR}/${PN}-ew-silencers.patch"
-	epatch "${FILESDIR}/${PN}-ew-proxy.patch"
+	(("$MYTHMAJOR" == 0)) && (("$MYTHMINOR" < 25)) \
+		&& epatch "${FILESDIR}/${PN}-ew-square-pixels.patch" \
+		|| epatch "${FILESDIR}/${PN}-${MYTHMAJOR}.${MYTHMINOR}-ew-square-pixels.patch"
+	(("$MYTHMAJOR" == 0)) && (("$MYTHMINOR" < 25)) \
+		&& epatch "${FILESDIR}/${PN}-ew-silencers.patch" \
+		|| epatch "${FILESDIR}/${PN}-${MYTHMAJOR}.${MYTHMINOR}-ew-silencers.patch"
+#	epatch "${FILESDIR}/${PN}-ew-proxy.patch"
 #	epatch "${FILESDIR}/${PN}_smoothsync-24fixes-p0.patch"
 }
 
@@ -103,6 +107,8 @@ pkg_setup() {
 }
 
 src_configure() {
+	S="${ORIGINAL_S}/mythtv"
+	cd "${S}"
 	local myconf="
 		$(use_enable alsa audio-alsa)
 		$(use_enable altivec)
@@ -112,9 +118,7 @@ src_configure() {
 		$(use_enable jack audio-jack)
 		$(use_enable lirc)
 		$(use_enable vdpau)
-		--disable-directfb
 		--dvb-path=/usr/include
-		--enable-opengl-vsync
 		--enable-x11
 		--enable-xrandr
 		--enable-xv
@@ -125,6 +129,9 @@ src_configure() {
 
 	use mmx || use adm64 && mm="en" || mm="dis"
 	myconf="${myconf} --${mm}able-mmx"
+
+	(("$MYTHMAJOR" == 0)) && (("$MYTHMINOR" < 25)) \
+		&& myconf="${myconf} --disable-directfb --enable-opengl-vsync"
 
 	use perl && wb="perl" || wb=""
 	use python && wb="${wb},python"
@@ -146,11 +153,15 @@ src_compile() {
 }
 
 src_install() {
+	S="${ORIGINAL_S}/mythtv"
+	cd "${S}"
 	einfo installing to INSTALL_ROOT: "${D}"
 	make INSTALL_ROOT="${D}" install || die "install failed"
 	dodoc AUTHORS FAQ UPGRADING README
 	dodir /var/log/mythtv
 	fowners mythtv:mythtv /var/log/mythtv
+	insinto /usr/share/mythtv/database
+	doins database/mc.sql
 	for i in mythbackend mythfrontend ; do
 		newconfd "${FILESDIR}/${i}.conf" ${i}
 		if use daemontools ; then

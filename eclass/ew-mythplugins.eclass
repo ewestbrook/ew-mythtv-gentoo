@@ -21,13 +21,15 @@ IUSE="
  +mythgallery
  -mythgame
  +mythmusic
+ +mythnetvision
  +mythnews
- +mythmusic
- +mythvideo
  +mythweather
  -mythzoneminder
- +mythnetvision
   opengl
+"
+(("$MYTHMAJOR" == 0)) && (("$MYTHMINOR" < 25)) \
+	&& IUSE="${IUSE}
+ +mythvideo
 "
 
 RDEPEND="
@@ -58,7 +60,6 @@ src_configure() {
 		$(use_enable mythmusic)
 		$(use_enable mythnetvision)
 		$(use_enable mythnews)
-		$(use_enable mythvideo)
 		$(use_enable mythweather)
 		$(use_enable mythzoneminder)
 		$(use_enable opengl)
@@ -66,6 +67,9 @@ src_configure() {
 		--mandir=/usr/share/man
 		--prefix=/usr
 "
+
+	(("$MYTHMAJOR" == 0)) && (("$MYTHMINOR" < 25)) \
+		&& myconf="${myconf} $(use_enable mythvideo)"
 
 	einfo "Running ./configure ${myconf}"
 	sh ./configure ${myconf} || die "configure died"
