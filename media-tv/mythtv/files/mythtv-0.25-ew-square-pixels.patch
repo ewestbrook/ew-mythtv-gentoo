@@ -1,0 +1,26 @@
+diff --git a/mythtv/libs/libmythtv/videooutbase.cpp b/mythtv/libs/libmythtv/videooutbase.cpp
+index 673b6e3..cbed17e 100644
+--- a/mythtv/libs/libmythtv/videooutbase.cpp
++++ b/mythtv/libs/libmythtv/videooutbase.cpp
+@@ -1695,11 +1695,20 @@ void VideoOutput::InitDisplayMeasurements(uint width, uint height, bool resize)
+     if (disp_dim.isEmpty())
+     {
+         source = "Guessed!";
+-        LOG(VB_GENERAL, LOG_WARNING, LOC + "Physical size of display unknown."
++        LOG(VB_PLAYBACK, LOG_WARNING, LOC + "Physical size of display unknown."
+                 "\n\t\t\tAssuming 17\" monitor with square pixels.");
+         disp_dim = QSize((int) ((300 * pixel_aspect) + 0.5), 300);
+     }
+ 
++    int vobasp = gCoreContext->GetNumSettingOnHost("IgnorePhysicalDimensions"
++                                                   , gCoreContext->GetHostName()
++                                                   , 0);
++    if (vobasp) {
++        source = "SquarePixels!";
++        LOG(VB_PLAYBACK, LOG_WARNING, LOC + "IgnorePhysicalDimensions set; square pixels assumed.");
++        disp_dim.setWidth((int) ((disp_dim.height() * pixel_aspect) + 0.5));
++    }
++
+     disp_aspect = (float) disp_dim.width() / (float) disp_dim.height();
+     LOG(VB_PLAYBACK, LOG_INFO, LOC +
+         QString("%1 display dimensions: %2x%3 mm  Aspect: %4")

@@ -1,0 +1,28 @@
+diff --git a/mythtv/external/FFmpeg/libavcodec/mpegvideo.c b/mythtv/external/FFmpeg/libavcodec/mpegvideo.c
+index f319768..c74a56a 100644
+--- a/mythtv/external/FFmpeg/libavcodec/mpegvideo.c
++++ b/mythtv/external/FFmpeg/libavcodec/mpegvideo.c
+@@ -997,7 +997,7 @@ int MPV_frame_start(MpegEncContext *s, AVCodecContext *avctx)
+ 
+     if(s->codec_id != CODEC_ID_H264){
+         if((s->last_picture_ptr==NULL || s->last_picture_ptr->data[0]==NULL) && s->pict_type!=FF_I_TYPE){
+-            av_log(avctx, AV_LOG_ERROR, "warning: first frame is no keyframe\n");
++            /* av_log(avctx, AV_LOG_ERROR, "warning: first frame is no keyframe\n"); */
+             /* Allocate a dummy frame */
+             i= ff_find_unused_picture(s, 0);
+             s->last_picture_ptr= &s->picture[i];
+diff --git a/mythtv/libs/libmythtv/avformatdecoder.cpp b/mythtv/libs/libmythtv/avformatdecoder.cpp
+index e9a365f..bb1307e 100644
+--- a/mythtv/libs/libmythtv/avformatdecoder.cpp
++++ b/mythtv/libs/libmythtv/avformatdecoder.cpp
+@@ -1456,8 +1456,8 @@ void AvFormatDecoder::ScanATSCCaptionStreams(int av_index)
+     // Figure out languages of ATSC captions
+     if (!ic->cur_pmt_sect)
+     {
+-        LOG(VB_GENERAL, LOG_DEBUG, LOC +
+-            "ScanATSCCaptionStreams() called with no PMT");
++        /* LOG(VB_GENERAL, LOG_DEBUG, LOC +
++            "ScanATSCCaptionStreams() called with no PMT"); */
+         return;
+     }
+ 
