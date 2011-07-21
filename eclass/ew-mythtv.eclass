@@ -162,6 +162,13 @@ src_install() {
 	fowners mythtv:mythtv /var/log/mythtv
 	insinto /usr/share/mythtv/database
 	doins database/mc.sql
+	for i in contrib/{user_jobs,maintenance} ; do
+		for j in $i/* ; do
+			dodir /usr/share/mythtv/$i
+			insinto /usr/share/mythtv/$i
+			doins $j
+		done
+	done
 	for i in mythbackend mythfrontend ; do
 		newconfd "${FILESDIR}/${i}.conf" ${i}
 		if use daemontools ; then
