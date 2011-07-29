@@ -165,8 +165,8 @@ src_install() {
 	for i in contrib/{user_jobs,maintenance} ; do
 		for j in $i/* ; do
 			dodir /usr/share/mythtv/$i
-			insinto /usr/share/mythtv/$i
-			doins $j
+			exeinto /usr/share/mythtv/$i
+			doexe $j
 		done
 	done
 	for i in mythbackend mythfrontend ; do
