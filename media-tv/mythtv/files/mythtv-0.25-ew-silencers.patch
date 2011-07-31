@@ -26,3 +26,20 @@ index e9a365f..bb1307e 100644
          return;
      }
  
+diff --git a/mythtv/libs/libmythtv/videobuffers.cpp b/mythtv/libs/libmythtv/videobuffers.cpp
+index 7e989d3..cf9a37a 100644
+--- a/mythtv/libs/libmythtv/videobuffers.cpp
++++ b/mythtv/libs/libmythtv/videobuffers.cpp
+@@ -275,10 +275,12 @@ VideoFrame *VideoBuffers::GetNextFreeFrame(BufferType enqueue_to)
+ 
+         if (tries >= TRY_LOCK_SPINS)
+         {
++          /*
+             LOG(VB_GENERAL, LOG_ERR,
+                 QString("GetNextFreeFrame() unable to "
+                         "lock frame %1 times. Discarding Frames.")
+                     .arg(TRY_LOCK_SPINS));
++          */
+             DiscardFrames(true);
+             continue;
+         }
