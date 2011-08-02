@@ -5,6 +5,7 @@
 ##########################################
 
 EAPI=2
+PYTHON_DEPEND="2"
 inherit eutils versionator flag-o-matic multilib qt4 toolchain-funcs python
 
 EGIT_PROJECT="mythtv"
@@ -74,7 +75,7 @@ RDEPEND="
 	lirc? ( app-misc/lirc )
 	perl? ( dev-perl/DBD-mysql dev-perl/Net-UPnP )
 	pulseaudio? ( media-sound/pulseaudio )
-	python? ( dev-python/mysql-python dev-python/lxml )
+	python? ( dev-python/mysql-python dev-python/lxml dev-python/urlgrabber )
 	vdpau? ( x11-libs/libvdpau )
 "
 
@@ -100,8 +101,19 @@ src_unpack() {
 }
 
 pkg_setup() {
+	use python && python_set_active_version 2
 	enewuser mythtv -1 /bin/bash /home/mythtv ${MYTHTV_GROUPS}
 	usermod -a -G video,audio,tty,uucp mythtv
+}
+
+pkg_prepare() {
+	default
+	S="${ORIGINAL_S}/mythtv"
+	cd "${S}"
+	if use python ; then
+		python_convert_shebangs -r 2 bindings/python
+		python_copy_sources bindings/python
+	fi
 }
 
 src_configure() {
@@ -189,11 +201,11 @@ src_install() {
 }
 
 pkg_postinst() {
-	use python && python_mod_optimize $(python_get_sitedir)/MythTV
+	use python && python_mod_optimize MythTV
 }
 
 pkg_postrm() {
-	use python && python_mod_cleanup $(python_get_sitedir)/MythTV
+	use python && python_mod_cleanup MythTV
 }
 
 pkg_info() {
