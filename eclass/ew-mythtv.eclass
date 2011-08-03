@@ -200,14 +200,6 @@ src_install() {
 	done
 }
 
-pkg_postinst() {
-	use python && python_mod_optimize MythTV
-}
-
-pkg_postrm() {
-	use python && python_mod_cleanup MythTV
-}
-
 pkg_info() {
 	"${ROOT}/usr/bin/mythfrontend" --version
 }
