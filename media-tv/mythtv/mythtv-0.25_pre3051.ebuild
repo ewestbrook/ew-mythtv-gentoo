@@ -5,6 +5,6 @@
 ##########################################
 
 MYTHBRANCH="master"
-MYTHCOMMIT="b3db7b9842b1ebfd31a10bc432f581db39a27ef4"
+MYTHCOMMIT="f4ba7827e165672ed8c0c901b50243443f5f203d"
 KEYWORDS="~amd64 ~ppc ~x86"
-inherit ew-mythplugins
+inherit ew-mythtv
