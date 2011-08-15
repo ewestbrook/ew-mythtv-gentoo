@@ -87,6 +87,8 @@ DEPEND="
 	x11-apps/xinit
 "
 
+python_enable_pyc
+
 src_unpack() {
 	git_src_unpack
 	S="${ORIGINAL_S}/mythtv"
