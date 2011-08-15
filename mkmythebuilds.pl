@@ -22,13 +22,12 @@ my $gitloglevel = DBGDEBUG;
 
 my @resultfiles = ();
 
-my $maxrevs = 10;
+my $maxrevs = 20;
 my $homedir = '/home/eric';
 my $devdir = "${homedir}/dev";
 my $tmpdir = "${homedir}/tmp/ewmgoe";
 
 my $ewmgoehub = 'git@github.com:ewestbrook/ew-mythtv-gentoo.git';
-# my $ewmgoehub = '/home/eric/dev/git/ew-mythtv-gentoo';
 my $ewmgoe = "$tmpdir/ew-mythtv-gentoo";
 my $ewmgoeopt = "--git-dir=$ewmgoe/.git --work-tree=$ewmgoe";
 
