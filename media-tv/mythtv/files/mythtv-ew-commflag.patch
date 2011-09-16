@@ -1,0 +1,14 @@
+diff --git a/mythtv/libs/libmythtv/mythplayer.cpp b/mythtv/libs/libmythtv/mythplayer.cpp
+index 058f910..c8a1f16 100644
+--- a/mythtv/libs/libmythtv/mythplayer.cpp
++++ b/mythtv/libs/libmythtv/mythplayer.cpp
+@@ -4059,7 +4059,8 @@ VideoFrame* MythPlayer::GetRawVideoFrame(long long frameNumber)
+             VERBOSE(VB_PLAYBACK, LOC + QString("Waited 100ms for video frame"));
+     }
+ 
+-    return videoOutput->GetLastDecodedFrame();
++    videoOutput->StartDisplayingFrame();
++    return videoOutput->GetLastShownFrame();
+ }
+ 
+ QString MythPlayer::GetEncodingType(void) const
