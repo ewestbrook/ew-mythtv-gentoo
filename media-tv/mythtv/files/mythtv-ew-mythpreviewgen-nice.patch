@@ -1,0 +1,13 @@
+diff --git a/mythtv/libs/libmythtv/previewgenerator.cpp b/mythtv/libs/libmythtv/previewgenerator.cpp
+index ab1f9ed..30fd79d 100644
+--- a/mythtv/libs/libmythtv/previewgenerator.cpp
++++ b/mythtv/libs/libmythtv/previewgenerator.cpp
+@@ -194,7 +194,7 @@ bool PreviewGenerator::Run(void)
+     QDateTime dtm = QDateTime::currentDateTime();
+     QTime tm = QTime::currentTime();
+     bool ok = false;
+-    QString command = GetInstallPrefix() + "/bin/mythpreviewgen";
++    QString command = "/usr/local/bin/mythpreviewgen";
+     bool local_ok = ((IsLocal() || !!(mode & kForceLocal)) &&
+                      (!!(mode & kLocal)) &&
+                      QFileInfo(command).isExecutable());

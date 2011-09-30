@@ -101,6 +101,7 @@ src_unpack() {
 		&& epatch "${FILESDIR}/${PN}-ew-silencers.patch" \
 		|| epatch "${FILESDIR}/${PN}-${MYTHMAJOR}.${MYTHMINOR}-ew-silencers.patch"
 	epatch "${FILESDIR}/${PN}-ew-commflag.patch"
+	epatch "${FILESDIR}/${PN}-ew-mythpreviewgen-nice.patch"
 }
 
 pkg_setup() {
