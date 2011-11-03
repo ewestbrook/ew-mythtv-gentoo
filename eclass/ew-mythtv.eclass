@@ -100,7 +100,6 @@ src_unpack() {
 	(("$MYTHMAJOR" == 0)) && (("$MYTHMINOR" < 25)) \
 		&& epatch "${FILESDIR}/${PN}-ew-silencers.patch" \
 		|| epatch "${FILESDIR}/${PN}-${MYTHMAJOR}.${MYTHMINOR}-ew-silencers.patch"
-	epatch "${FILESDIR}/${PN}-ew-commflag.patch"
 	epatch "${FILESDIR}/${PN}-ew-mythpreviewgen-nice.patch"
 }
 
