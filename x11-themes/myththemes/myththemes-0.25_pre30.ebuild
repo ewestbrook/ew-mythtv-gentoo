@@ -5,6 +5,6 @@
 ##########################################
 
 MYTHBRANCH="master"
-MYTHCOMMIT="bdbc8b3363a5e7fabfa015bce698e34252a374c5"
+MYTHCOMMIT="234d61c9c05a2637f00aa53ec2751bbb5aa55f7b"
 KEYWORDS="~amd64 ~ppc ~x86"
 inherit ew-myththemes
