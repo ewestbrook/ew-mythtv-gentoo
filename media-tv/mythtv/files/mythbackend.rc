@@ -15,7 +15,7 @@ start() {
   [ -z "$MYTHTV_HOME"    ] && MYTHTV_HOME="/etc/mythtv"
   [ -z "$MYTHTV_USER"    ] && MYTHTV_USER="mythtv"
 
-  HOME="${MYTH_HOME}"
+  HOME="${MYTHTV_HOME}"
 
   #fixes for bug #101308
   unset DISPLAY
@@ -31,9 +31,9 @@ start() {
       --pidfile "$MYTHTV_PIDFILE" \
       --background \
       -- \
-      --verbose "$MYTH_VERBOSE" \
+      --verbose "$MYTHTV_VERBOSE" \
       --user "$MYTHTV_USER" \
-      "$MYTH_EXTRAOPTS" \
+      "$MYTHTV_EXTRAOPTS" \
       --logfile "$MYTHTV_LOGFILE"
   eend $?
 }
