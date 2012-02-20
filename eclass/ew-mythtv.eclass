@@ -67,7 +67,7 @@ RDEPEND="
 	daemontools? ( sys-process/daemontools )
 	dbus? ( x11-libs/qt-dbus:4 )
 	directv? ( virtual/perl-Time-HiRes )
-	dvb? ( media-libs/libdvb media-tv/linuxtv-dvb-headers )
+	dvb? ( media-libs/libdvb virtual/linuxtv-dvb-headers )
 	fftw? ( sci-libs/fftw:3.0 )
 	ieee1394? (	sys-libs/libraw1394 sys-libs/libavc1394 media-libs/libiec61883 )
 	jack? ( media-sound/jack-audio-connection-kit )
