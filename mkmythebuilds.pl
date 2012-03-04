@@ -1,26 +1,33 @@
 #!/usr/bin/perl -w
 
-use lib '/home/eric/dev/git/EW/lib';
+#
+# mkmythebuild.pl
+#
+# Objective: Scan recent git history for MythTV and related projects,
+# collecting the git hash identifiers and relationships to sequence
+# numbers in "git describe" Then, create appropriate Gentoo ebuilds
+# for the new versions, and rebuild the Gentoo Portage manifests.
+#
+# Copyright 2010, 2011 Eric E. Westbrook github@westbrook.com
+# https://github.com/ewestbrook/ew-mythtv-gentoo
+#
 
 use EW::Debug;
 EW::Debug::p('level' => DBGINFO);
+my $gitloglevel = DBGDEBUG;
 
 use EW::File;
 use EW::Sys;
 use EW::Time;
 use File::Basename;
 
+# initialize time of day settings
+
 EW::Time::p('TZ' => 'UTC');
 $ENV{'TZ'} = 'UTC';
 my $nowday = EW::Time->now->tostring('%Y%m%d');
 
-dbg("====================", DBGVERBOSE);
-dbg("===== $0 start =====", DBGVERBOSE);
-dbg("====================", DBGVERBOSE);
-
-my $gitloglevel = DBGDEBUG;
-
-my @resultfiles = ();
+# configurable variables
 
 my $maxrevs = 20;
 my $homedir = '/home/eric';
@@ -31,7 +38,7 @@ my $ewmgoehub = 'git@github.com:ewestbrook/ew-mythtv-gentoo.git';
 my $ewmgoe = "$tmpdir/ew-mythtv-gentoo";
 my $ewmgoeopt = "--git-dir=$ewmgoe/.git --work-tree=$ewmgoe";
 
-my ($so, $se);
+# config: associate packages with available repos and branch names
 
 %pkgs = ();
 $pkgs{'mythtv'} = { 'cat' => 'media-tv'
@@ -49,8 +56,8 @@ $pkgs{'myththemes'} = { 'cat' => 'x11-themes'
 $pkgs{'nuvexport'} = { 'cat' => 'media-video'
                        , 'repo' => 'nuvexport'
                        , 'branches' => [ 'fixes/0.24', 'master' ] };
-if (0) {
-}
+
+# config: define repos and their canonical locations
 
 my %repos;
 if (1) {
@@ -65,6 +72,9 @@ if (1) {
             , 'nuvexport' => { 'github' => '/home/eric/tmp/refgoe/nuvexport', 'cwd' => 'nuvexport' });
 }
 
+# config: Some specific hashes are not tagged upstream, but do
+# correspond to a specific version release.
+
 my %hackytags = ('myththemes' => { 'v0.23' => '3c126bc3c97a547c2de3'
                                    , 'v0.24' => 'f0172278cd378a3c7178'
                                    , 'v0.25pre' => '7491bf1b0d0bb8c8d070' }
@@ -75,18 +85,21 @@ my %hackytags = ('myththemes' => { 'v0.23' => '3c126bc3c97a547c2de3'
                                    , 'v0.24' => '03a753d74908b6bdb7ae'
                                    , 'v0.25pre' => '523aef09357f4a8a4ccc' } );
 
-# my $cat = 'media-tv';
-# my $pkg = 'mythtv';
-# my $br = 'fixes/0.24';
-# my $repo = 'mythtv';
-# my $arch = '';
+my @resultfiles = ();
+my ($so, $se);
+
+# purge the temporary directory we'll be working in, to start fresh
 
 dbg("Purging $tmpdir", DBGVERBOSE);
 ($so, $se) = EW::Sys::do("rm -rf $tmpdir");
 ($so, $se) = EW::Sys::do("mkdir -p $tmpdir");
 
+# create a working clone of the result repository
+
 dbg("Cloning ewmgoe into $ewmgoe", DBGVERBOSE);
 ($so, $se) = EW::Sys::do("git clone $ewmgoehub $ewmgoe");
+
+# iterate packages
 
 foreach my $pkg (keys %pkgs) {
   my ($cat, $repo) = map { $pkgs{$pkg}{$_} } ('cat', 'repo');
@@ -94,6 +107,8 @@ foreach my $pkg (keys %pkgs) {
 
   my $wkdir = "$tmpdir/$repo";
   my $wkdiropt = "--git-dir=$wkdir/.git --work-tree=$wkdir";
+
+  # clone this package's repo if we haven't already
 
   if (!$repos{$repo}{'cloned'}) {
     dbg("Cloning: $repo into $wkdir", DBGVERBOSE);
@@ -109,12 +124,16 @@ foreach my $pkg (keys %pkgs) {
     }
   }
 
+  # now, iterate this package's branches for new commits to assimilate
+
   my $branches = $pkgs{$pkg}{'branches'};
   foreach my $br (@$branches) {
     dbg("Iterating: $pkg/$br", DBGVERBOSE);
 
     dbg("Checkout: $repo/$br", DBGVERBOSE);
     ($so, $se) = EW::Sys::do("git $wkdiropt checkout $br", $gitloglevel, $gitloglevel, $gitloglevel);
+
+    # collect history of commits for this package/branch, in long hash format
 
     dbg("Scraping full log: $repo/$br", DBGVERBOSE);
     my ($allhashes, $se1) = EW::Sys::do("git $wkdiropt log --reverse --pretty=\"format:%H\"", $gitloglevel, $gitloglevel, $gitloglevel);
@@ -134,6 +153,8 @@ foreach my $pkg (keys %pkgs) {
       }
     }
 
+    # collect the "git describe" name for each commit
+
     dbg("Scraping recent log: $repo/$br", DBGVERBOSE);
     my ($hashes, $se) = EW::Sys::do("git $wkdiropt log -n$maxrevs --pretty=\"format:%H\"", $gitloglevel, $gitloglevel, $gitloglevel);
 
@@ -146,10 +167,13 @@ foreach my $pkg (keys %pkgs) {
         foreach my $k (keys %$bvstuff) { $revs{$h}{$k} = $bvstuff->{$k}; }
       } elsif ('master' eq $br) {
         my $seq = $baserevs{$h};
-        $revs{$h}{'bv'} = "99999-pre${seq}";
+        $revs{$h}{'bv'} = "99999_pre${seq}";
         $revs{$h}{'arch'} = "~";
       }
     }
+
+    # iterate all commits, construct relevant ebuild particulars, and
+    # decide whether a new ebuild should be written for that commit
 
     REV: foreach my $h (@$hashes) {
       next unless defined $revs{$h};
@@ -192,12 +216,16 @@ foreach my $pkg (keys %pkgs) {
   }
 }
 
+# rebuild the portage manifest for each package
+
 foreach my $pkg (keys %pkgs) {
   my $d = "$ewmgoe/$pkgs{$pkg}{'cat'}/${pkg}";
   if (mkmanifest($pkg, $d)) {
     push @resultfiles, "${d}/Manifest";
   }
 }
+
+# commit the results back to origin
 
 if (1 && scalar(@resultfiles)) {
   my $gll = $gitloglevel;
@@ -208,7 +236,12 @@ if (1 && scalar(@resultfiles)) {
   ($so, $se) = EW::Sys::do('git $ewmgoeopt push', $gll, $gll, $gll);
 }
 
+# done
+
 exit;
+
+# mkmanifest($pkg, $pewmgoe)
+# Helper function to rebuild one portage manifest
 
 sub mkmanifest {
   my ($pkg, $pewmgoe) = @_;
@@ -230,6 +263,12 @@ sub mkmanifest {
   return 1;
 }
 
+# ebuildcontent($pkg, $branch, $hash, $arch)
+#
+# Generates a single ebuild file representing a package and commit,
+# from which the package can be installed to that version using
+# portage's emerge command.
+
 sub ebuildcontent {
   my ($pkg, $branch, $hash, $arch) = @_;
   $branch = (split('/', $branch))[0];
@@ -247,6 +286,9 @@ sub ebuildcontent {
   return \@lines;
 }
 
+# getdesc($h, $wkdiropt)
+# Retrieve the "git describe" tag for a given commit
+
 sub getdesc {
   my ($h, $wkdiropt) = @_;
   ($so, $se) = EW::Sys::do("git $wkdiropt describe --tags $h", $gitloglevel, $gitloglevel, $gitloglevel);
@@ -254,6 +296,9 @@ sub getdesc {
   $d = '' unless defined $d;
   return $d;
 }
+
+# getbv($d)
+# Extract portage-compatible particulars from a "git describe" tag.
 
 sub getbv {
   my $d = shift;
@@ -270,5 +315,3 @@ sub getbv {
              , 'arch' => $arch);
   return \%lhs;
 }
-
-# foreach my $line (@$lines); do d=$(git describe $i) ; q0=${d#*-} ; q=${q0%-*} ; f=~/dev/git/ew-mythtv-gentoo/media-tv/mythtv/mythtv-0.24.0.$q.ebuild ; if [ -e $f ] ; then c0=$(grep MYTHCOMMIT ~/dev/git/ew-mythtv-gentoo/media-tv/mythtv/mythtv-0.24.0.$q.ebuild) ; else c0="" ; fi ; echo "$i $d $q $c0" ; done
