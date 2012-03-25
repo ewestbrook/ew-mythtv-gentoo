@@ -15,7 +15,11 @@ MYTHMINOR="${VC[2]}"
 
 EGIT_REPO_URI="git://github.com/${MY_PN}/${EGIT_PROJECT}"
 EGIT_COMMIT=$([ "" == "${GITHASH}" ] && echo "${MYTHCOMMIT}" || echo "${GITHASH}")
-EGIT_BRANCH=$([ "fixes" == "${MYTHBRANCH}" ] && echo "fixes/${MYTHMAJOR}.${MYTHMINOR}" || echo "master")
+if [ "fixes" == "${MYTHBRANCH##*/}" ] ; then
+	EGIT_BRANCH="${MYTHBRANCH}/${MYTHMAJOR}.${MYTHMINOR}"
+else
+	EGIT_BRANCH="$MYTHBRANCH"
+fi
 inherit git
 
 ORIGINAL_S="${S}"

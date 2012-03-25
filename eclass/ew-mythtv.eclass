@@ -93,14 +93,14 @@ src_unpack() {
 	git_src_unpack
 	S="${ORIGINAL_S}/mythtv"
 	cd "${S}"
-	epatch "${FILESDIR}/${PN}-0.21-ldconfig-sanxbox-fix.patch"
+	epatch "${FILESDIR}/mythtv-0.21-ldconfig-sanxbox-fix.patch"
 	(("$MYTHMAJOR" == 0)) && (("$MYTHMINOR" < 25)) \
-		&& epatch "${FILESDIR}/${PN}-ew-square-pixels.patch" \
-		|| epatch "${FILESDIR}/${PN}-${MYTHMAJOR}.${MYTHMINOR}-ew-square-pixels.patch"
+		&& epatch "${FILESDIR}/mythtv-ew-square-pixels.patch" \
+		|| epatch "${FILESDIR}/mythtv-${MYTHMAJOR}.${MYTHMINOR}-ew-square-pixels.patch"
 	(("$MYTHMAJOR" == 0)) && (("$MYTHMINOR" < 25)) \
-		&& epatch "${FILESDIR}/${PN}-ew-silencers.patch" \
-		|| epatch "${FILESDIR}/${PN}-${MYTHMAJOR}.${MYTHMINOR}-ew-silencers.patch"
-	epatch "${FILESDIR}/${PN}-ew-mythpreviewgen-nice.patch"
+		&& epatch "${FILESDIR}/mythtv-ew-silencers.patch" \
+		|| epatch "${FILESDIR}/mythtv-${MYTHMAJOR}.${MYTHMINOR}-ew-silencers.patch"
+	epatch "${FILESDIR}/mythtv-ew-mythpreviewgen-nice.patch"
 }
 
 pkg_setup() {
